@@ -3,8 +3,9 @@ import re
 import logging
 import asyncio
 from typing import Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 # import 3rd party packages
+import pytz
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -144,10 +145,10 @@ class TreeNotifCog(commands.Cog):
                 return
             # timestamp was found
             timestamp = int(timestamp.group())
-            timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=timezone.utc)
+            timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
             # check if it is before edited_at or next_water
             async with self.message_mutex:
-                next_water = self.next_water.get(str(guild_id), datetime.now(tz=timezone.utc))
+                next_water = self.next_water.get(str(guild_id), datetime.now(tz=pytz.utc))
                 if not (
                     timestamp <= edited_at or
                     next_water is not None and timestamp <= next_water
@@ -233,7 +234,7 @@ class TreeNotifCog(commands.Cog):
         cleans up messages sent more than an hour ago in the tree channel
         """
         # get the current time and offset it by an hour
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+        cutoff = datetime.now(tz=pytz.utc) - timedelta(hours=1)
         # iterate through guild IDs
         guild_ids = [guild.id for guild in self.bot.guilds]
         for guild_id in guild_ids:
@@ -357,7 +358,7 @@ class TreeNotifCog(commands.Cog):
         """
         next_water = self.next_water.get(str(guild_id), None)
         if next_water is not None:
-            return (datetime.now(tz=timezone.utc) > next_water)
+            return (datetime.now(tz=pytz.utc) > next_water)
         else:
             return False
 

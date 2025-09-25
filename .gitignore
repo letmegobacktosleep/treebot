@@ -30,6 +30,10 @@ Temporary Items
 *.py[codz]
 *$py.class
 
+# Python VENV
+venv
+.venv
+
 # Private
 *.log
 data/*

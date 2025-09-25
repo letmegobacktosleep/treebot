@@ -3,8 +3,10 @@ import os
 import json
 import logging
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 import asyncio
+# import 3rd party packages
+import pytz
 import aiofiles
 # import utils & cogs
 from utils.constants import DATETIME_STRING_FORMAT
@@ -115,7 +117,7 @@ class BotConfigFile:
         Sets default data for guilds not in the JSON file
         """
         # fetch the current time with hour precision
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=pytz.utc)
         dt = dt.replace(minute=0, second=0, microsecond=0)
         # acquire mutex lock
         async with self.mutex:

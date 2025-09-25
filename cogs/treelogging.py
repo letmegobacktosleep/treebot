@@ -1,15 +1,15 @@
 # import built-in packages
 import re
 import json
-import pytz
 import logging
 import asyncio
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 # import 3rd party packages
+import pytz
 import pandas
-from io import BytesIO
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -135,7 +135,7 @@ class TreeLoggingCog(commands.Cog):
             # figure out the log path
             log_path = Path(f"{self.data_folder}/{guild_id}.csv")
             # get the current time
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=pytz.utc)
             # fetch the most recent log
             if log_path.exists():
                 cutoff = now - timedelta(hours=3)
@@ -225,12 +225,12 @@ class TreeLoggingCog(commands.Cog):
                 return
             # timestamp was found
             timestamp = int(timestamp.group())
-            timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=timezone.utc)
+            timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
             # check if it is before edited_at or next_water
             async with self.mutex:
                 if (
                     timestamp <= edited_at or
-                    timestamp <= self.next_water.get(str(guild_id), datetime.now(tz=timezone.utc))
+                    timestamp <= self.next_water.get(str(guild_id), datetime.now(tz=pytz.utc))
                 ):
                     return
                 # append edited_at and timestamp to the log
@@ -306,7 +306,7 @@ class TreeLoggingCog(commands.Cog):
         Returns a tuple containing (uptime, downtime) within the past x hours.
         """
         # get current time and find the cutoff
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=pytz.utc)
         cutoff = now - timedelta(hours=hours)
 
         # fetch the logs
@@ -350,7 +350,7 @@ class TreeLoggingCog(commands.Cog):
         Sends a status message summarising the uptime and downtime.
         """
         # fetch the current time with hour precision
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=pytz.utc)
         # iterate through guild IDs
         guild_ids = [guild.id for guild in self.bot.guilds]
         for guild_id in guild_ids:
@@ -365,7 +365,7 @@ class TreeLoggingCog(commands.Cog):
                 for i, hour in enumerate(config["valid_hours"]):
                     next_message = config["next_message"][i]
                     next_message = next_message.strptime(DATETIME_STRING_FORMAT)
-                    next_message = next_message.replace(tzinfo=timezone.utc)
+                    next_message = next_message.replace(tzinfo=pytz.utc)
                     if dt > next_message:
                         # find the uptime and downtime
                         h_uptime, h_downtime = self.calc_up_down(
@@ -511,7 +511,7 @@ class TreeLoggingCog(commands.Cog):
         # set the guild id
         guild_id = interaction.guild_id
         # get the time period
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=pytz.utc)
         start = now - timedelta(hours=offset)
         cutoff = start - timedelta(hours=hours)
         # fetch the logs within the time period
@@ -570,7 +570,7 @@ class TreeLoggingCog(commands.Cog):
         # set the guild id
         guild_id = interaction.guild_id
         # get the time period
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=pytz.utc)
         start = now - timedelta(hours=offset)
         cutoff = start - timedelta(hours=hours)
         # fetch the logs within the time period
