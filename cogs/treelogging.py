@@ -393,7 +393,7 @@ class TreeLoggingCog(commands.Cog):
                             next_message = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
                             next_message = next_message + timedelta(days=1)
                             config["next_message"][i] = next_message.strftime(DATETIME_STRING_FORMAT)
-                            await self.config.get_data(guild_id, "status_message", config)
+                            await self.config.set_data(guild_id, "status_message", config)
 
     @app_commands.command(
         name="config_general",
@@ -492,8 +492,10 @@ class TreeLoggingCog(commands.Cog):
     async def cmd_fetch_logs(
         self,
         interaction: discord.Interaction,
-        hours: int,
-        offset: int = 0
+        days: int,
+        hours: int = 0,
+        offset_days: int = 0,
+        offset_hours: int = 0
     ) -> None:
         """
         Send the logs as a CSV attachment
@@ -511,8 +513,8 @@ class TreeLoggingCog(commands.Cog):
         guild_id = interaction.guild_id
         # get the time period
         now = datetime.now(tz=pytz.utc)
-        start = now - timedelta(hours=offset)
-        cutoff = start - timedelta(hours=hours)
+        start = now - timedelta(days=offset_days, hours=offset_hours)
+        cutoff = start - timedelta(days=days, hours=hours)
         # fetch the logs within the time period
         df = await self.fetch_logs(
             guild_id=guild_id,
@@ -560,8 +562,10 @@ class TreeLoggingCog(commands.Cog):
     async def cmd_calc_graph(
         self,
         interaction: discord.Interaction,
-        hours: int,
-        offset: int = 0
+        days: int,
+        hours: int = 0,
+        offset_days: int = 0,
+        offset_hours: int = 0
     ) -> None:
         """
         Send a graph generated from the logs
@@ -579,8 +583,8 @@ class TreeLoggingCog(commands.Cog):
         guild_id = interaction.guild_id
         # get the time period
         now = datetime.now(tz=pytz.utc)
-        start = now - timedelta(hours=offset)
-        cutoff = start - timedelta(hours=hours)
+        start = now - timedelta(days=offset_days, hours=offset_hours)
+        cutoff = start - timedelta(days=days, hours=hours)
         # fetch the logs within the time period
         df = await self.fetch_logs(
             guild_id=guild_id,
