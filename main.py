@@ -73,6 +73,10 @@ class TreeBot(commands.Bot):
         # set a new config value for the new guild
         await self.config.set_default_data([guild.id])
 
+    async def on_message(self, guild):
+        # do nothing
+        return
+
 # create intents
 intents = discord.Intents.default()
 intents.messages = True
