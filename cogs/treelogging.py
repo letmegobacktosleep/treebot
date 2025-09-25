@@ -539,6 +539,25 @@ class TreeLoggingCog(commands.Cog):
                 )
             )
             return
+        # fetch the output timezone
+        config = await self.config.get_data(guild_id, "general")
+        try:
+            output_timezone = pytz.timezone(config["timezone"])
+        except pytz.exceptions.UnknownTimeZoneError:
+            await interaction.followup.send(
+                content=(
+                    "Invalid timezone. Please change the timezone in general config\n"
+                    "Example configuration: `/config_general timezone:UTC` `/config_general timezone:Australia/Sydney`"
+                )
+            )
+        # convert timezones
+        df[['wet', 'dry']] = df[['wet', 'dry']].apply(
+            lambda col: col.dt.tz_convert(output_timezone)
+        )
+        # convert datetime into string
+        df[['wet', 'dry']] = df[['wet', 'dry']].apply(
+            lambda col: col.dt.strftime(DATETIME_STRING_FORMAT)
+        )
         # create a BytesIO object to store the logs in memory
         buffer = BytesIO()
         await asyncio.to_thread(
