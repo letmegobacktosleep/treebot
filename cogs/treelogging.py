@@ -362,16 +362,23 @@ class TreeLoggingCog(commands.Cog):
                 dt.weekday() in config["valid_days"]
             ):
                 for i, hour in enumerate(config["valid_hours"]):
+                    # doesn't exist yet
+                    if i >= len(config["next_message"]):
+                        next_message = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+                        next_message = next_message + timedelta(days=1)
+                        config["next_message"].append(next_message.strftime(DATETIME_STRING_FORMAT))
+                        await self.config.set_data(guild_id, "status_message", config)
+                    # check the config
                     next_message = config["next_message"][i]
-                    next_message = next_message.strptime(DATETIME_STRING_FORMAT)
+                    next_message = datetime.strptime(next_message, DATETIME_STRING_FORMAT)
                     next_message = next_message.replace(tzinfo=pytz.utc)
                     if dt > next_message:
                         # find the uptime and downtime
-                        h_uptime, h_downtime = self.calc_up_down(
+                        h_uptime, h_downtime = await self.calc_up_down(
                             guild_id=guild_id,
                             hours=config["total_hours"]
                         )
-                        y_uptime, y_downtime = self.calc_up_down(
+                        y_uptime, y_downtime = await self.calc_up_down(
                             guild_id=guild_id,
                             hours=24*365
                         )
@@ -394,6 +401,8 @@ class TreeLoggingCog(commands.Cog):
                             next_message = next_message + timedelta(days=1)
                             config["next_message"][i] = next_message.strftime(DATETIME_STRING_FORMAT)
                             await self.config.set_data(guild_id, "status_message", config)
+                            # only send one message per server every time the loop runs
+                            break
 
     @app_commands.command(
         name="config_general",
