@@ -47,7 +47,7 @@ class TreeBot(commands.Bot):
         await self.load_extension("cogs.treelogging")
         await self.load_extension("cogs.treenotification")
         # sync commands
-        # await self.tree.sync()
+        await self.tree.sync()
 
         return await super().setup_hook()
 
@@ -79,6 +79,6 @@ intents.messages = True
 intents.message_content = True
 
 # get the token and start the bot
-token = get_bot_token(label="test")
+token = get_bot_token(label="stable")
 bot = TreeBot(command_prefix=None, intents=intents)
 bot.run(token=token)

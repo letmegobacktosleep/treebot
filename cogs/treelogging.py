@@ -520,6 +520,15 @@ class TreeLoggingCog(commands.Cog):
             start=cutoff,
             end=now
         )
+        # error if there are no logs
+        if df.empty:
+            await interaction.followup.send(
+                content=(
+                    "The requested logs contain no data.\n"
+                    "Please try the command again with a longer timeframe."
+                )
+            )
+            return
         # create a BytesIO object to store the logs in memory
         buffer = BytesIO()
         await asyncio.to_thread(
@@ -579,6 +588,15 @@ class TreeLoggingCog(commands.Cog):
             start=cutoff,
             end=now
         )
+        # error if there are no logs
+        if df.empty:
+            await interaction.followup.send(
+                content=(
+                    "The requested logs contain no data.\n"
+                    "Please try the command again with a longer timeframe."
+                )
+            )
+            return
         # generate the graph
         config = await self.config.get_data(guild_id, "general")
         try:

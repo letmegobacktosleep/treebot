@@ -47,8 +47,8 @@ async def util_graph_summary(
     date_ratio   = df.groupby('date')['ratio'].mean()
 
     # calculate stdev for hour/day
-    hourly_std = df.groupby('hour_of_day')['downtime'].std()
-    daily_std  = df.groupby('day_of_week')['downtime'].std()
+    hourly_std = df.groupby('hour_of_day')['downtime'].std().fillna(0)
+    daily_std  = df.groupby('day_of_week')['downtime'].std().fillna(0)
 
     # set figure size
     # https://matplotlib.org/stable/users/explain/axes/arranging_axes.html#manual-adjustments-to-a-gridspec-layout
