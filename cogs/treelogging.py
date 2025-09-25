@@ -359,8 +359,7 @@ class TreeLoggingCog(commands.Cog):
             # check whether a message should be sent
             if (
                 config["channel_id"] is not None and
-                config["valid_days"][0] <= dt.weekday() and
-                config["valid_days"][1] >= dt.weekday()
+                dt.weekday() in config["valid_days"]
             ):
                 for i, hour in enumerate(config["valid_hours"]):
                     next_message = config["next_message"][i]
