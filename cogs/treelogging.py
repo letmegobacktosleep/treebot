@@ -522,13 +522,13 @@ class TreeLoggingCog(commands.Cog):
         guild_id = interaction.guild_id
         # get the time period
         now = datetime.now(tz=pytz.utc)
-        start = now - timedelta(days=offset_days, hours=offset_hours)
-        cutoff = start - timedelta(days=days, hours=hours)
+        end = now - timedelta(days=offset_days, hours=offset_hours)
+        start = end - timedelta(days=days, hours=hours)
         # fetch the logs within the time period
         df = await self.fetch_logs(
             guild_id=guild_id,
-            start=cutoff,
-            end=now
+            start=start,
+            end=end
         )
         # error if there are no logs
         if df.empty:
@@ -555,7 +555,7 @@ class TreeLoggingCog(commands.Cog):
             filename=(
                 f"{guild_id}_"
                 f"{start.strftime(date_format)}_to_"
-                f"{start.strftime(date_format)}.csv"
+                f"{end.strftime(date_format)}.csv"
             )
         )
         # send the file
@@ -592,13 +592,13 @@ class TreeLoggingCog(commands.Cog):
         guild_id = interaction.guild_id
         # get the time period
         now = datetime.now(tz=pytz.utc)
-        start = now - timedelta(days=offset_days, hours=offset_hours)
-        cutoff = start - timedelta(days=days, hours=hours)
+        end = now - timedelta(days=offset_days, hours=offset_hours)
+        start = end - timedelta(days=days, hours=hours)
         # fetch the logs within the time period
         df = await self.fetch_logs(
             guild_id=guild_id,
-            start=cutoff,
-            end=now
+            start=start,
+            end=end
         )
         # error if there are no logs
         if df.empty:
@@ -633,7 +633,7 @@ class TreeLoggingCog(commands.Cog):
             filename=(
                 f"{guild_id}_"
                 f"{start.strftime(date_format)}_to_"
-                f"{start.strftime(date_format)}.png"
+                f"{end.strftime(date_format)}.png"
             )
         )
         # send the file
