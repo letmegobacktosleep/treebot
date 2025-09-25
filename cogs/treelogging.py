@@ -573,8 +573,8 @@ class TreeLoggingCog(commands.Cog):
             fp=buffer,
             filename=(
                 f"{guild_id}_"
-                f"{start.astimezone(tz=pytz.timezone(output_timezone)).strftime(date_format)}_to_"
-                f"{end.astimezone(tz=pytz.timezone(output_timezone)).strftime(date_format)}.csv"
+                f"{start.astimezone(tz=output_timezone).strftime(date_format)}_to_"
+                f"{end.astimezone(tz=output_timezone).strftime(date_format)}.csv"
             )
         )
         # send the file
@@ -651,8 +651,8 @@ class TreeLoggingCog(commands.Cog):
             fp=buffer,
             filename=(
                 f"{guild_id}_"
-                f"{start.astimezone(tz=pytz.timezone(output_timezone)).strftime(date_format)}_to_"
-                f"{end.astimezone(tz=pytz.timezone(output_timezone)).strftime(date_format)}.png"
+                f"{start.astimezone(tz=output_timezone).strftime(date_format)}_to_"
+                f"{end.astimezone(tz=output_timezone).strftime(date_format)}.png"
             )
         )
         # send the file
