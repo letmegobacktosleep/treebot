@@ -240,8 +240,11 @@ class TreeNotifCog(commands.Cog):
         for guild_id in guild_ids:
             # fetch the notification config
             config = await self.config.get_data(guild_id, "notification")
-            # fetch the channel
+            # skip if the channel_id is not set
             channel_id = config["channel_id"]
+            if channel_id is None:
+                continue
+            # fetch the channel
             channel = self.bot.get_channel(channel_id)
             if channel is None:
                 try:
@@ -270,7 +273,7 @@ class TreeNotifCog(commands.Cog):
             if len(messages) > 0:
                 await channel.delete_messages(messages, reason="Removing dead messages")
             # wait a while to prevent rate limiting
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
 
     async def send_notification(self, config: dict, guild_id: int, category: str):
         """
