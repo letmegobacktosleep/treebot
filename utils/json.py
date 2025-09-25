@@ -146,7 +146,7 @@ class BotConfigFile:
                             "goal": 0, # default to zero - should never be reached
                             "greater_than": False, # whether it should check if the value is greater than
                             "pattern": "(?<=the #)[0-9]*(?= tallest)", # the regex pattern to find the float in the string
-                            "message": "`@/659701277038739456` `newline` Tree has reached rank #`goal`!" # the message to be sent when the goal is reached
+                            "message": "`@/` `newline` Tree has reached rank #`goal`!" # the message to be sent when the goal is reached
                         },
                         "notification": {
                             "channel_id": None, # integer, ignore if None
