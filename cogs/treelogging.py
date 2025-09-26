@@ -335,8 +335,10 @@ class TreeLoggingCog(commands.Cog):
         uptime   = df['uptime'].sum()
         downtime = df['downtime'].sum()
 
-        # account for currently downtime, if the dataframe exists
-        if not df.empty:
+        # no datapoints in the dataframe
+        if df.empty:
+            return (0, hours * 60 * 60)
+        else: # last datapoint ends before current time
             last_dry = df['dry'].iloc[-1]
             if last_dry < now:
                 downtime += (now - last_dry).total_seconds()
