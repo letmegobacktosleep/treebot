@@ -173,7 +173,7 @@ class TreeNotifCog(commands.Cog):
             return
         # check if should send an insect notification
         if config["insect"]:
-            if self.tree_has_insect(buttons=buttons):
+            if self.tree_has_insect(buttons=buttons, guild_id=guild_id):
                 await self.send_notification(
                     config=config,
                     guild_id=guild_id,
@@ -327,7 +327,7 @@ class TreeNotifCog(commands.Cog):
             await self.delete_message(message=message)
 
     @staticmethod
-    def substitute_string(match: re.Match, index: int):
+    def substitute_string(match: re.Match, index: int) -> bool:
         """
         Replaces a string such as `zero``one``two` with `zero` for index 0.
         """
@@ -335,24 +335,30 @@ class TreeNotifCog(commands.Cog):
         match = match.strip("`").split("``")
         return match[index]
 
-    @staticmethod
-    def tree_has_insect(buttons):
+    def tree_has_insect(self, buttons: set, guild_id: int) -> bool:
         """
         checks whether the modal button with the bugnet exists
         """
-        for button in buttons:
-            if button == "bugnet":
+        # check for "bugnet" (custom emoji, no unicode equivalent)
+        if "bugnet" in buttons:
+            return True
+        # all buttons become 🧺 for fruit catching,
+        # the bugnet button only exists if there is also 💧 and 🔄
+        elif "💧" not in buttons:
+            # unless this function returns False,
+            # the following value will be a discord.Message, not None
+            if self.notifications[str(guild_id)]["insect"] is not None:
                 return True
+        # the bugnet button is gone
         return False
 
     @staticmethod
-    def tree_has_basket(buttons):
+    def tree_has_basket(buttons: set) -> bool:
         """
         checks whether the modal button with the basket exists
         """
-        for button in buttons:
-            if button == "🧺":
-                return True
+        if "🧺" in buttons:
+            return True
         return False
 
     def tree_needs_watering(self, guild_id: int):
