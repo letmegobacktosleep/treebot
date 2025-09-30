@@ -583,9 +583,9 @@ class TreeLoggingCog(commands.Cog):
         await interaction.followup.send(
             content=(
                 f"`Type:     ` Watering Logs\n"
-                f"`Timezone: `{config["timezone"]}\n"
-                f"`Start:    `<t:{start.timestamp():.0f}:R>\n"
-                f"`End:      `<t:{end.timestamp():.0f}:R>"
+                f"`Timezone: ` {config["timezone"]}\n"
+                f"`Start:    ` <t:{start.timestamp():.0f}:R>\n"
+                f"`End:      ` <t:{end.timestamp():.0f}:R>"
             ),
             file=file
         )
@@ -666,9 +666,9 @@ class TreeLoggingCog(commands.Cog):
         await interaction.followup.send(
             content=(
                 f"`Type:     ` Summary Graph\n"
-                f"`Timezone: `{config["timezone"]}\n"
-                f"`Start:    `<t:{start.timestamp():.0f}:R>\n"
-                f"`End:      `<t:{end.timestamp():.0f}:R>"
+                f"`Timezone: ` {config["timezone"]}\n"
+                f"`Start:    ` <t:{start.timestamp():.0f}:R>\n"
+                f"`End:      ` <t:{end.timestamp():.0f}:R>"
             ),
             file=file
         )
