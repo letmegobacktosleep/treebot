@@ -584,8 +584,8 @@ class TreeLoggingCog(commands.Cog):
             content=(
                 f"`Type:     ` Watering Logs\n"
                 f"`Timezone: `{config["timezone"]}\n"
-                f"`Start:    `{start.timestamp():.0f}\n"
-                f"`End:      `{end.timestamp():.0f}"
+                f"`Start:    `<t:{start.timestamp():.0f}:R>\n"
+                f"`End:      `<t:{end.timestamp():.0f}:R>"
             ),
             file=file
         )
@@ -667,8 +667,8 @@ class TreeLoggingCog(commands.Cog):
             content=(
                 f"`Type:     ` Summary Graph\n"
                 f"`Timezone: `{config["timezone"]}\n"
-                f"`Start:    `{start.timestamp():.0f}\n"
-                f"`End:      `{end.timestamp():.0f}"
+                f"`Start:    `<t:{start.timestamp():.0f}:R>\n"
+                f"`End:      `<t:{end.timestamp():.0f}:R>"
             ),
             file=file
         )
