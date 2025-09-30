@@ -110,7 +110,6 @@ async def util_graph_summary(
 
     # save to a BytesIO buffer
     buffer = BytesIO()
-    plt.tight_layout()
     plt.savefig(buffer, format="png")
     plt.close()
     # return the buffer
