@@ -136,8 +136,8 @@ class BotConfigFile:
                         "status_message": {
                             "channel_id": None, # integer, ignore if None
                             "total_hours": 24 * 7,
-                            "valid_days": [6, 6], # start & end (day 6 = Sunday)
-                            "valid_hours": [11], # valid hours (11am UTC ~ 9pm AEST)
+                            "valid_days": [6], # valid days (day 6 = Sunday)
+                            "valid_hours": [11], # valid hours (11am UTC ~= 9pm AEST)
                             "next_message": [dt.replace(hour=11).strftime(DATETIME_STRING_FORMAT)] # when the next message should be sent
                         },
                         "tree_goal": {
