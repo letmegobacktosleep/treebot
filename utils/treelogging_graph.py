@@ -44,7 +44,7 @@ async def util_graph_summary(
     # calculate averages for hour/day
     hourly_avg = df.groupby('hour_of_day')['downtime'].mean()
     daily_avg  = df.groupby('day_of_week')['downtime'].mean()
-    date_ratio   = df.groupby('date')['ratio'].mean()
+    date_ratio   = df.groupby('date')['ratio'].mean().dropna()
 
     # calculate stdev for hour/day
     hourly_std = df.groupby('hour_of_day')['downtime'].std().fillna(0)
