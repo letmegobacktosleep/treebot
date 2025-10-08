@@ -269,7 +269,7 @@ class TreeLoggingCog(commands.Cog):
         # look for the pattern in the embed text
         value = re.search(config["pattern"], embed_text)
         if value is None:
-            logger.info(f"Could not find pattern: {config["pattern"]} in embed text {embed_text}")
+            # logger.info(f"Could not find pattern: {config["pattern"]} in embed text {embed_text}")
             return
         else:
             value = float(value.group())
@@ -584,8 +584,8 @@ class TreeLoggingCog(commands.Cog):
             content=(
                 f"`Type:     ` Watering Logs\n"
                 f"`Timezone: ` {config["timezone"]}\n"
-                f"`Start:    ` <t:{start.timestamp():.0f}:R>\n"
-                f"`End:      ` <t:{end.timestamp():.0f}:R>"
+                f"`Start:    ` <t:{start.timestamp():.0f}:f>\n"
+                f"`End:      ` <t:{end.timestamp():.0f}:f>"
             ),
             file=file
         )
@@ -667,8 +667,8 @@ class TreeLoggingCog(commands.Cog):
             content=(
                 f"`Type:     ` Summary Graph\n"
                 f"`Timezone: ` {config["timezone"]}\n"
-                f"`Start:    ` <t:{start.timestamp():.0f}:R>\n"
-                f"`End:      ` <t:{end.timestamp():.0f}:R>"
+                f"`Start:    ` <t:{start.timestamp():.0f}:f>\n"
+                f"`End:      ` <t:{end.timestamp():.0f}:f>"
             ),
             file=file
         )
