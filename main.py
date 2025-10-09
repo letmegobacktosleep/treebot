@@ -6,6 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 # import utils & cogs
+from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import get_bot_token, BotConfigFile
 
 # set up the logger
@@ -29,6 +30,10 @@ class TreeBot(commands.Bot):
         # load the config json file
         self.config = BotConfigFile()
         asyncio.run(self.config.load_json())
+        # load the csv logging files
+        self.tree_logs = TreeLogFile()
+        # load the next_water instance
+        self.next_water = TreeNextWater(self.tree_logs)
 
         # variables from TreeLoggingCog, shared with ???
         self.datetime_next_water = {}
@@ -64,14 +69,18 @@ class TreeBot(commands.Bot):
             guild_ids.append(guild.id)
             print(f"  {guild.id} - {guild.name}")
         # set a new config value for all the guilds
-        await self.config.set_default_data(guild_ids)
+        await self.config.set_default_data(guild_ids=guild_ids)
+        await self.tree_logs.load_logs(guild_ids=guild_ids)
+        await self.next_water.load_logs(guild_ids=guild_ids)
 
     async def on_guild_join(self, guild):
         """
         Runs whenever a new guild is joined
         """
         # set a new config value for the new guild
-        await self.config.set_default_data([guild.id])
+        await self.config.set_default_data(guild_ids=[guild.id])
+        await self.tree_logs.load_logs(guild_ids=[guild.id])
+        await self.next_water.load_logs(guild_ids=[guild.id])
 
     async def on_message(self, guild):
         # do nothing

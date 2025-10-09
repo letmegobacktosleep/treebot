@@ -9,12 +9,12 @@ from typing import Optional
 from datetime import datetime, timedelta
 # import 3rd party packages
 import pytz
-import pandas
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 # import utils & cogs
 from utils.constants import DATETIME_STRING_FORMAT, PATTERN_TIMESTAMP
+from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
 from utils.config import util_modify_config
 from utils.treelogging_graph import util_graph_summary
@@ -32,31 +32,16 @@ class TreeLoggingCog(commands.Cog):
     def __init__(
         self,
         bot: commands.Bot,
-        config: BotConfigFile
+        config: BotConfigFile,
+        tree_logs: TreeLogFile,
+        next_water: TreeNextWater
     ):
         self.bot = bot
         self.config = config
+        self.tree_logs = tree_logs
+        self.next_water = next_water
         self.mutex = asyncio.Lock()
         self.data_folder = "data"
-        self.next_water = {}
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        """
-        Runs approximately when the bot has connected to the API.
-        Initialises the time when the tree will need watering. 
-        """
-        # set the initial values for the "next_water"
-        guild_ids = [guild.id for guild in self.bot.guilds]
-        await self.set_default_next_water(guild_ids=guild_ids)
-
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        """
-        Runs whenever a new guild is joined
-        """
-        # set an initial value for the next water
-        await self.set_default_next_water([guild.id])
 
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload):
@@ -84,85 +69,6 @@ class TreeLoggingCog(commands.Cog):
         # restart the status message loop, if it is not running
         if not self.status_message.is_running():
             self.status_message.start()
-
-    async def fetch_logs(
-        self,
-        guild_id: int,
-        start: datetime,
-        end: datetime
-    ) -> pandas.DataFrame:
-        """
-        Returns the logs within the specified interval.
-        """
-        # get the log path
-        log_path = Path(f"{self.data_folder}/{guild_id}.csv")
-        if not log_path.exists():
-            return None
-
-        # read the csv log
-        async with self.mutex:
-            df = await asyncio.to_thread(
-                lambda log_path=log_path: pandas.read_csv(
-                    filepath_or_buffer=log_path,
-                    parse_dates=['wet', 'dry'],
-                    date_format=DATETIME_STRING_FORMAT
-                )
-            )
-
-        # set timezone as UTC
-        df[['wet', 'dry']] = df[['wet', 'dry']].apply(
-            lambda col: col.dt.tz_localize(pytz.utc)
-        )
-
-        # only keep rows where wet is before dry
-        df = df[(df['wet'] <= df['dry'])]
-
-        # filter within the specified interval
-        df = df[(df['dry'] >= start) & (df['wet'] <= end)]
-
-        # remove invalid values
-        return df.dropna()
-
-    async def set_default_next_water(
-        self,
-        guild_ids: list[int]
-    ) -> None:
-        """
-        Reads the latest "next_water" time from the CSV logs,
-        Or sets it as the current time if the CSV logs do not exist.
-        """
-        for guild_id in guild_ids:
-            # figure out the log path
-            log_path = Path(f"{self.data_folder}/{guild_id}.csv")
-            # get the current time
-            now = datetime.now(tz=pytz.utc)
-            # fetch the most recent log
-            if log_path.exists():
-                cutoff = now - timedelta(hours=3)
-                df = await self.fetch_logs(
-                    guild_id=guild_id,
-                    start=cutoff,
-                    end=now
-                )
-                if df.empty:
-                    next_water = now
-                else:
-                    next_water = df['dry'].iloc[-1]
-            # create a blank log
-            else:
-                async with self.mutex:
-                    df = pandas.DataFrame(
-                        columns=['wet', 'dry']
-                    )
-                    await asyncio.to_thread(
-                        lambda log_path=log_path, df=df: df.to_csv(
-                            log_path, index=False,
-                            encoding="utf-8"
-                        )
-                    )
-                next_water = now
-            # set it to the "next water" time if it doesn't exist
-            self.next_water.setdefault(str(guild_id), next_water)
 
     async def check_tree(
         self,
@@ -221,33 +127,30 @@ class TreeLoggingCog(commands.Cog):
             timestamp = PATTERN_TIMESTAMP.search(embed_text)
             # timestamp was not found
             if timestamp is None:
-                logger.info(f"Could not find timestamp <t:12345678:R> in embed text {embed_text.replace('\n', '')}")
+                logger.info("Could not find timestamp <t:12345678:R> in embed text " + embed_text.replace("\n", ""))
                 return
             # timestamp was found
             timestamp = int(timestamp.group())
             timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
+            # fetch the next water time
+            next_water = await self.next_water.fetch_guild(guild_id=guild_id)
             # check if it is before edited_at or next_water
             async with self.mutex:
                 if (
                     timestamp <= edited_at or
-                    timestamp <= self.next_water.get(str(guild_id), datetime.now(tz=pytz.utc))
+                    timestamp <= next_water
                 ):
                     return
                 # append edited_at and timestamp to the log
-                log_path = Path(f"{self.data_folder}/{guild_id}.csv")
-                df = pandas.DataFrame([{
-                    'wet': edited_at.strftime(DATETIME_STRING_FORMAT),
-                    'dry': timestamp.strftime(DATETIME_STRING_FORMAT)
-                }])
-                await asyncio.to_thread(
-                    lambda df=df: df.to_csv(
-                        log_path, index=False,
-                        encoding="utf-8", mode="a",
-                        header=False
-                    )
+                await self.tree_logs.append_log(
+                    guild_id=guild_id,
+                    data = {
+                        'wet': edited_at.strftime(DATETIME_STRING_FORMAT),
+                        'dry': timestamp.strftime(DATETIME_STRING_FORMAT)
+                    }
                 )
                 # update next_water
-                self.next_water[str(guild_id)] = timestamp
+                await self.next_water.update_guild(guild_id=guild_id, timestamp=timestamp)
 
     async def check_goal(
         self,
@@ -269,7 +172,7 @@ class TreeLoggingCog(commands.Cog):
         # look for the pattern in the embed text
         value = re.search(config["pattern"], embed_text)
         if value is None:
-            # logger.info(f"Could not find pattern: {config["pattern"]} in embed text {embed_text}")
+            # logger.info(f"Could not find pattern: {config['pattern']} in embed text {embed_text}")
             return
         else:
             value = float(value.group())
@@ -281,9 +184,10 @@ class TreeLoggingCog(commands.Cog):
             # create the notification message
             content = config["message"]
             def substitute_string(match):
-                return f"<@{re.search(r"&?[0-9]+", match.group()).group()}>"
+                user_or_role_id = re.search(r"&?[0-9]+", match.group()).group()
+                return f"<@{user_or_role_id}>"
             content = re.sub(r"`@/[0-9]+`", substitute_string, content)
-            content = re.sub(r"(?i)(?<=`)goal(?=`)", f"{config["goal"]}", content)
+            content = re.sub(r"(?i)(?<=`)goal(?=`)", f"{config['goal']}", content)
             content = re.sub(r"(?i) ?`newline` ?", "\n", content)
             # send the notification message
             message = await util_send_message_in_channel(
@@ -310,7 +214,7 @@ class TreeLoggingCog(commands.Cog):
         cutoff = now - timedelta(hours=hours)
 
         # fetch the logs
-        df = await self.fetch_logs(
+        df = await self.tree_logs.read_log(
             guild_id=guild_id,
             start=cutoff,
             end=now
@@ -389,7 +293,7 @@ class TreeLoggingCog(commands.Cog):
                             bot=self.bot,
                             channel_id=config["channel_id"],
                             content=(
-                                f"### Past {config["total_hours"]} Hours:\n"
+                                f"### Past {config['total_hours']} Hours:\n"
                                 f"`uptime:` `{100 * h_uptime / (h_uptime + h_downtime + 0.00001):7.4f}%`   "
                                 f"`wet:` `{h_uptime:6.0f}`   `dry:` `{h_downtime:6.0f}`\n"
                                 f"### Past Year:\n"
@@ -527,7 +431,7 @@ class TreeLoggingCog(commands.Cog):
         end = now - timedelta(days=offset_days, hours=offset_hours)
         start = end - timedelta(days=days, hours=hours)
         # fetch the logs within the time period
-        df = await self.fetch_logs(
+        df = await self.tree_logs.read_log(
             guild_id=guild_id,
             start=start,
             end=end
@@ -583,7 +487,7 @@ class TreeLoggingCog(commands.Cog):
         await interaction.followup.send(
             content=(
                 f"`Type:     ` Watering Logs\n"
-                f"`Timezone: ` {config["timezone"]}\n"
+                f"`Timezone: ` {config['timezone']}\n"
                 f"`Start:    ` <t:{start.timestamp():.0f}:f>\n"
                 f"`End:      ` <t:{end.timestamp():.0f}:f>"
             ),
@@ -621,7 +525,7 @@ class TreeLoggingCog(commands.Cog):
         end = now - timedelta(days=offset_days, hours=offset_hours)
         start = end - timedelta(days=days, hours=hours)
         # fetch the logs within the time period
-        df = await self.fetch_logs(
+        df = await self.tree_logs.read_log(
             guild_id=guild_id,
             start=start,
             end=end
@@ -666,7 +570,7 @@ class TreeLoggingCog(commands.Cog):
         await interaction.followup.send(
             content=(
                 f"`Type:     ` Summary Graph\n"
-                f"`Timezone: ` {config["timezone"]}\n"
+                f"`Timezone: ` {config['timezone']}\n"
                 f"`Start:    ` <t:{start.timestamp():.0f}:f>\n"
                 f"`End:      ` <t:{end.timestamp():.0f}:f>"
             ),
@@ -681,6 +585,8 @@ async def setup(bot):
     await bot.add_cog(
         TreeLoggingCog(
             bot,
-            bot.config
+            bot.config,
+            bot.tree_logs,
+            bot.next_water
         )
     )

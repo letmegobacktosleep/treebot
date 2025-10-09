@@ -10,7 +10,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 # import utils & cogs
-from utils.constants import PATTERN_TIMESTAMP
+from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
 from utils.config import util_modify_config
 from utils.send_message import util_send_message_in_channel
@@ -27,14 +27,17 @@ class TreeNotifCog(commands.Cog):
     def __init__(
         self,
         bot: commands.Bot,
-        config: BotConfigFile
+        config: BotConfigFile,
+        tree_logs: TreeLogFile,
+        next_water: TreeNextWater
     ):
         self.bot = bot
         self.config = config
         self.message_mutex = asyncio.Lock()
 
         self.data_folder = "data"
-        self.next_water = {}
+        self.tree_logs = tree_logs
+        self.next_water = next_water
         self.notifications = {}
 
     @commands.Cog.listener()
@@ -45,7 +48,7 @@ class TreeNotifCog(commands.Cog):
         """
         # set the initial values for the "next_water"
         guild_ids = [guild.id for guild in self.bot.guilds]
-        await self.set_default_guild_config(guild_ids=guild_ids)
+        await self.load_guild_notifications(guild_ids=guild_ids)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -53,7 +56,7 @@ class TreeNotifCog(commands.Cog):
         Runs whenever a new guild is joined
         """
         # set an initial value for the next water
-        await self.set_default_guild_config([guild.id])
+        await self.load_guild_notifications([guild.id])
 
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload):
@@ -85,13 +88,11 @@ class TreeNotifCog(commands.Cog):
         if not self.remove_notifications.is_running():
             self.remove_notifications.start()
 
-    async def set_default_guild_config(self, guild_ids: list[int]):
+    async def load_guild_notifications(self, guild_ids: list[int]):
         """
-        Sets it to None just because.
+        Assuming no messages have been sent yet, set the notification message ID to None
         """
         for guild_id in guild_ids:
-            # set it to None if it doesn't exist
-            self.next_water.setdefault(str(guild_id), None)
             self.notifications.setdefault(str(guild_id), {"insect": None, "fruit": None, "water": None})
 
     async def check_tree(self, message: discord.Message):
@@ -126,35 +127,7 @@ class TreeNotifCog(commands.Cog):
                     embed.description is not None and
                     "your tree is" in embed.description.lower()
                 ):
-                    embed_text = f"{embed.description}\n{embed.footer.text}"
-                    await self.log_tree(guild_id=message.guild.id, embed_text=embed_text, edited_at=edited_at)
                     await self.process_button_notification(message=message)
-
-    async def log_tree(self, guild_id: int, embed_text: str, edited_at: datetime):
-        """
-        Logs the time of:
-        - when the tree can be watered next
-        """
-        # usually only the message displaying the tree will contain "ready to be watered"
-        if not "ready to be watered" in embed_text.lower():
-            # look for the timestamp of when it can be watered next
-            timestamp = PATTERN_TIMESTAMP.search(embed_text)
-            # timestamp was not found
-            if timestamp is None:
-                logger.info(f"Could not find timestamp <t:12345678:R> in embed text {embed_text.replace('\n', '')}")
-                return
-            # timestamp was found
-            timestamp = int(timestamp.group())
-            timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
-            # check if it is before edited_at or next_water
-            async with self.message_mutex:
-                next_water = self.next_water.get(str(guild_id), datetime.now(tz=pytz.utc))
-                if not (
-                    timestamp <= edited_at or
-                    next_water is not None and timestamp <= next_water
-                ):
-                    # update next_water
-                    self.next_water[str(guild_id)] = timestamp
 
     async def process_button_notification(self, message: discord.Message):
         """
@@ -215,7 +188,7 @@ class TreeNotifCog(commands.Cog):
                 continue
             # check if should send a watering notification
             if config["water"]:
-                if self.tree_needs_watering(guild_id=guild_id):
+                if await self.tree_needs_watering(guild_id=guild_id):
                     await self.send_notification(
                         config=config,
                         guild_id=guild_id,
@@ -286,7 +259,7 @@ class TreeNotifCog(commands.Cog):
                 return
             # fetch the message content and substitute pings and newlines
             content = config["message"]
-            content = re.sub(r"(?i)`ping`", f"<@&{config[f"{category}_role_id"]}>", content)
+            content = re.sub(r"(?i)`ping`", f"<@&{config[f'{category}_role_id']}>", content)
             content = re.sub(r"(?i) ?`newline` ?", "\n", content)
             # figure out which part of the message to use
             index = 0
@@ -345,7 +318,7 @@ class TreeNotifCog(commands.Cog):
         # all buttons become 🧺 for fruit catching,
         # the bugnet button only exists if there is also 💧 and 🔄
         elif "💧" not in buttons:
-            # unless this function returns False,
+            # until this function returns False,
             # the following value will be a discord.Message, not None
             if self.notifications[str(guild_id)]["insect"] is not None:
                 return True
@@ -361,15 +334,12 @@ class TreeNotifCog(commands.Cog):
             return True
         return False
 
-    def tree_needs_watering(self, guild_id: int):
+    async def tree_needs_watering(self, guild_id: int):
         """
         checks whether the current time exceeds the next watering time
         """
-        next_water = self.next_water.get(str(guild_id), None)
-        if next_water is not None:
-            return (datetime.now(tz=pytz.utc) > next_water)
-        else:
-            return False
+        next_water = await self.next_water.fetch_guild(guild_id=guild_id)
+        return datetime.now(tz=pytz.utc) > next_water
 
     async def delete_message(self, message: discord.Message):
         """
@@ -433,6 +403,8 @@ async def setup(bot):
     await bot.add_cog(
         TreeNotifCog(
             bot,
-            bot.config
+            bot.config,
+            bot.tree_logs,
+            bot.next_water
         )
     )
