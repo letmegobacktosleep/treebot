@@ -160,8 +160,12 @@ class TreeLogFile:
                 else:
                     # row overlaps, skip row
                     valid_rows.append(False)
-            # return the valid rows
-            return group[valid_rows]
+            # filter by valid rows
+            result = group[valid_rows].copy()
+            # add back the type
+            result['type'] = group.name
+            # return the result
+            return result
 
         # set timezone as UTC
         # df[['start', 'end']] = df[['start', 'end']].apply(
@@ -182,7 +186,7 @@ class TreeLogFile:
         df = df.sort_values(by=['type', 'start'])
 
         # remove overlapping logs
-        df = df.groupby('type', group_keys=False).apply(remove_overlaps, include_groups=True)
+        df = df.groupby('type', group_keys=False).apply(remove_overlaps, include_groups=False)
 
         # remove invalid values
         return df.dropna()
