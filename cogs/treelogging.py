@@ -40,7 +40,6 @@ class TreeLoggingCog(commands.Cog):
         self.config = config
         self.tree_logs = tree_logs
         self.next_water = next_water
-        self.mutex = asyncio.Lock()
         self.data_folder = "data"
 
     @commands.Cog.listener()
@@ -132,26 +131,25 @@ class TreeLoggingCog(commands.Cog):
             # timestamp was found
             timestamp = int(timestamp.group())
             timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
-            async with self.mutex:
-                # fetch the next water time
-                next_water = await self.next_water.fetch_guild(guild_id=guild_id)
-                # check if it is before edited_at or next_water
-                if (
-                    timestamp <= edited_at and
-                    timestamp <= next_water
-                ):
-                    return
-                # append edited_at and timestamp to the log
-                await self.tree_logs.append_log(
-                    guild_id=guild_id,
-                    data = {
-                        'start': edited_at.strftime(DATETIME_STRING_FORMAT),
-                        'end':   timestamp.strftime(DATETIME_STRING_FORMAT),
-                        'type': "water"
-                    }
-                )
-                # update next_water
-                await self.next_water.update_guild(guild_id=guild_id, timestamp=timestamp)
+            # fetch the next water time
+            next_water = await self.next_water.fetch_guild(guild_id=guild_id)
+            # skip logging if it is before edited_at or next_water
+            if (
+                timestamp <= edited_at or
+                timestamp <= next_water
+            ):
+                return
+            # append edited_at and timestamp to the log
+            await self.tree_logs.append_log(
+                guild_id=guild_id,
+                data = {
+                    'start': edited_at.strftime(DATETIME_STRING_FORMAT),
+                    'end':   timestamp.strftime(DATETIME_STRING_FORMAT),
+                    'type': "water"
+                }
+            )
+            # update next_water
+            await self.next_water.update_guild(guild_id=guild_id, timestamp=timestamp)
 
     async def check_goal(
         self,

@@ -43,6 +43,55 @@ class TreeLogFile:
         # signal that loading is finished
         self.loaded = True
 
+    def read_log_chunked(
+        self,
+        log_path: Path,
+        start: datetime,
+        end: datetime,
+        filter_logs: tuple[str, ...]
+    ) -> pandas.DataFrame:
+        """
+        Reads the logs in chunks and returns the logs within the specified interval
+
+        :param log_path: Description
+        :type log_path: Path
+        :param start: The earliest timestamp that you want to fetch
+        :type start: datetime
+        :param end: The latest timestamp that you want to fetch
+        :type end: datetime
+        :param filter_logs: The log types which you want to fetch
+        :type filter_logs: tuple[str, ...] | None
+        :return: Pandas dataframe containing the logs
+        :rtype: DataFrame
+        """
+        # iterate through the csv file in chunks
+        chunks = []
+        for chunk in pandas.read_csv(
+            log_path,
+            chunksize=10000,
+            parse_dates=['start', 'end'],
+            date_format=DATETIME_STRING_FORMAT
+        ):
+            # filter by log type
+            if filter_logs is not None:
+                chunk = chunk[chunk['type'].isin(filter_logs)]
+
+            # set timezone as UTC
+            chunk[['start', 'end']] = chunk[['start', 'end']].apply(
+                lambda col: col.dt.tz_localize(pytz.utc)
+            )
+
+            # filter within the specified interval
+            chunk = chunk[(chunk['end'] >= start) & (chunk['start'] <= end)]
+
+            # add the chunk to the list
+            chunks.append(chunk)
+
+        if chunks:
+            return pandas.concat(chunks, ignore_index=True)
+        else:
+            return pandas.DataFrame()
+
     async def read_log(
         self,
         guild_id: int,
@@ -68,7 +117,7 @@ class TreeLogFile:
         # ignore if the log path does not exist
         if not log_path.exists():
             return None
-        
+
         # wait until logs are loaded
         while not self.loaded:
             await asyncio.sleep(1)
@@ -76,27 +125,64 @@ class TreeLogFile:
         # read the csv log
         async with self.mutex[guild_id]:
             df = await asyncio.to_thread(
-                lambda log_path=log_path, date_format=DATETIME_STRING_FORMAT: pandas.read_csv(
-                    filepath_or_buffer=log_path,
-                    parse_dates=['start', 'end'],
-                    date_format=date_format
-                )
+                lambda
+                log_path=log_path,
+                start=start, end=end,
+                filter_logs=filter_logs:
+                    self.read_log_chunked(
+                        log_path=log_path,
+                        start=start, end=end,
+                        filter_logs=filter_logs
+                    )
             )
 
+        def remove_overlaps(group: pandas.DataFrame) -> pandas.DataFrame:
+            """
+            overlaps may occur when on_raw_message_edit is not processed fast enough
+            this often occurs when the bot is starting up, since processing is deferred
+            until after the config is loaded
+            
+            :param group: Description
+            :type group: pandas.DataFrame
+            :return: Description
+            :rtype: DataFrame
+            """
+            # first row is always valid
+            valid_rows = [True]
+            prev_end = group.iloc[0]['end']
+            # iterate through group
+            for idx in range(1, len(group)):
+                current_start = group.iloc[idx]['start']
+                # only keep rows where (start) >= (previous end)
+                if current_start >= prev_end:
+                    valid_rows.append(True)
+                    prev_end = group.iloc[idx]['end']
+                else:
+                    # row overlaps, skip row
+                    valid_rows.append(False)
+            # return the valid rows
+            return group[valid_rows]
+
         # set timezone as UTC
-        df[['start', 'end']] = df[['start', 'end']].apply(
-            lambda col: col.dt.tz_localize(pytz.utc)
-        )
+        # df[['start', 'end']] = df[['start', 'end']].apply(
+        #     lambda col: col.dt.tz_localize(pytz.utc)
+        # )
 
         # filter the log type
-        if filter_logs is not None:
-            df = df[df['type'].isin(filter_logs)]
+        # if filter_logs is not None:
+        #     df = df[df['type'].isin(filter_logs)]
+
+        # filter within the specified interval
+        # df = df[(df['end'] >= start) & (df['start'] <= end)]
 
         # only keep rows where start is before end
         df = df[(df['start'] <= df['end'])]
 
-        # filter within the specified interval
-        df = df[(df['end'] >= start) & (df['start'] <= end)]
+        # sort by type, start and end
+        df = df.sort_values(by=['type', 'start'])
+
+        # remove overlapping logs
+        df = df.groupby('type', group_keys=False).apply(remove_overlaps, include_groups=True)
 
         # remove invalid values
         return df.dropna()
