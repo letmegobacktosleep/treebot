@@ -132,10 +132,10 @@ class TreeLoggingCog(commands.Cog):
             # timestamp was found
             timestamp = int(timestamp.group())
             timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
-            # fetch the next water time
-            next_water = await self.next_water.fetch_guild(guild_id=guild_id)
-            # check if it is before edited_at or next_water
             async with self.mutex:
+                # fetch the next water time
+                next_water = await self.next_water.fetch_guild(guild_id=guild_id)
+                # check if it is before edited_at or next_water
                 if (
                     timestamp <= edited_at and
                     timestamp <= next_water
