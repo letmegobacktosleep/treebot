@@ -189,7 +189,7 @@ class TreeNextWater:
         """
         # wait until logs are loaded
         while not self.loaded:
-            asyncio.sleep(1)
+            await asyncio.sleep(1)
 
         async with self.mutex:
             self.next_water[guild_id] = timestamp
@@ -208,7 +208,7 @@ class TreeNextWater:
         """
         # wait until logs are loaded
         while not self.loaded:
-            asyncio.sleep(1)
+            await asyncio.sleep(1)
 
         async with self.mutex:
             return self.next_water.get(guild_id, datetime.now(tz=pytz.utc))
