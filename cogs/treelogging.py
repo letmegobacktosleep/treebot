@@ -137,7 +137,7 @@ class TreeLoggingCog(commands.Cog):
             # check if it is before edited_at or next_water
             async with self.mutex:
                 if (
-                    timestamp <= edited_at or
+                    timestamp <= edited_at and
                     timestamp <= next_water
                 ):
                     return
