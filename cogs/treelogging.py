@@ -145,8 +145,9 @@ class TreeLoggingCog(commands.Cog):
                 await self.tree_logs.append_log(
                     guild_id=guild_id,
                     data = {
-                        'wet': edited_at.strftime(DATETIME_STRING_FORMAT),
-                        'dry': timestamp.strftime(DATETIME_STRING_FORMAT)
+                        'start': edited_at.strftime(DATETIME_STRING_FORMAT),
+                        'end':   timestamp.strftime(DATETIME_STRING_FORMAT),
+                        'type': "water"
                     }
                 )
                 # update next_water
@@ -221,12 +222,12 @@ class TreeLoggingCog(commands.Cog):
         )
 
         # clamp values
-        df.loc[df['wet'] <= cutoff, 'wet'] = cutoff
-        df.loc[df['dry'] >= now,    'dry'] = now
+        df.loc[df['start'] <= cutoff, 'start'] = cutoff
+        df.loc[df['end']   >= now,    'end']   = now
 
         # calculate uptime and downtime
-        df['uptime']   = df['dry'] - df['wet']
-        df['downtime'] = df['wet'] - df['dry'].shift(1)
+        df['uptime']   = df['end'] - df['start']
+        df['downtime'] = df['start'] - df['end'].shift(1)
         df['uptime']    = df['uptime'].dt.total_seconds()
         df['downtime']  = df['downtime'].dt.total_seconds()
 
@@ -243,7 +244,7 @@ class TreeLoggingCog(commands.Cog):
         if df.empty:
             return (0, hours * 60 * 60)
         else: # last datapoint ends before current time
-            last_dry = df['dry'].iloc[-1]
+            last_dry = df['end'].iloc[-1]
             if last_dry < now:
                 downtime += (now - last_dry).total_seconds()
 
@@ -354,6 +355,17 @@ class TreeLoggingCog(commands.Cog):
         config category: status_message
         channel_id, total_hours, valid_days, valid_hours
         """
+        # Convert valid_days to a list of ints
+        if valid_days is not None:
+            valid_days_int = [int(i.strip()) for i in valid_days.split(",")]
+        else:
+            valid_days_int = None
+        # Convert valid_hours to a list of ints
+        if valid_hours is not None:
+            valid_hours_int = [int(i.strip()) for i in valid_hours.split(",")]
+        else:
+            valid_hours_int = None
+
         await util_modify_config(
             interaction=interaction,
             config_class=self.config,
@@ -361,8 +373,8 @@ class TreeLoggingCog(commands.Cog):
             config_values=[
                 ("channel_id",  channel_id),
                 ("total_hours", total_hours),
-                ("valid_days",  [int(i.strip()) for i in valid_days.split(",")]  if valid_days  is not None else None),
-                ("valid_hours", [int(i.strip()) for i in valid_hours.split(",")] if valid_hours is not None else None)
+                ("valid_days",  valid_days_int),
+                ("valid_hours", valid_hours_int)
             ]
         )
 
@@ -434,7 +446,8 @@ class TreeLoggingCog(commands.Cog):
         df = await self.tree_logs.read_log(
             guild_id=guild_id,
             start=start,
-            end=end
+            end=end,
+            filter_logs=None
         )
         # error if there are no logs
         if df.empty:
@@ -457,11 +470,11 @@ class TreeLoggingCog(commands.Cog):
                 )
             )
         # convert timezones
-        df[['wet', 'dry']] = df[['wet', 'dry']].apply(
+        df[['start', 'end']] = df[['start', 'end']].apply(
             lambda col: col.dt.tz_convert(output_timezone)
         )
         # convert datetime into string
-        df[['wet', 'dry']] = df[['wet', 'dry']].apply(
+        df[['start', 'end']] = df[['start', 'end']].apply(
             lambda col: col.dt.strftime(DATETIME_STRING_FORMAT)
         )
         # create a BytesIO object to store the logs in memory

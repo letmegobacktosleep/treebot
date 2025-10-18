@@ -10,6 +10,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 # import utils & cogs
+from utils.constants import DATETIME_STRING_FORMAT
 from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
 from utils.config import util_modify_config
@@ -93,7 +94,14 @@ class TreeNotifCog(commands.Cog):
         Assuming no messages have been sent yet, set the notification message ID to None
         """
         for guild_id in guild_ids:
-            self.notifications.setdefault(str(guild_id), {"insect": None, "fruit": None, "water": None})
+            self.notifications.setdefault(
+                str(guild_id),
+                {
+                    "insect": None,
+                    "fruit": None,
+                    "water": None
+                }
+            )
 
     async def check_tree(self, message: discord.Message):
         """
@@ -157,6 +165,10 @@ class TreeNotifCog(commands.Cog):
                     guild_id=guild_id,
                     category="insect"
                 )
+                await self.log_button_notification(
+                    guild_id=guild_id,
+                    category="insect"
+                )
                 self.notifications[str(guild_id)]["insect"] = None
         # check if should send a fruit notification
         if config["fruit"]:
@@ -168,6 +180,10 @@ class TreeNotifCog(commands.Cog):
                 )
             else:
                 await self.delete_notification(
+                    guild_id=guild_id,
+                    category="fruit"
+                )
+                await self.log_button_notification(
                     guild_id=guild_id,
                     category="fruit"
                 )
@@ -298,6 +314,26 @@ class TreeNotifCog(commands.Cog):
         if message is not None:
             # delete the message and remove it from cache
             await self.delete_message(message=message)
+
+    async def log_button_notification(self, guild_id: int, category: str) -> None:
+        """
+        logs the start and end time of each tree event
+        """
+        # do not log "water" category - this is already done by the treelogging cog
+        if category == "water":
+            raise KeyError("Watering logs should not be handled by this function")
+        # fetch the time that the message was created at
+        message = self.notifications[str(guild_id)][type]
+        created_at = message.created_at
+        deleted_at = datetime.now(tz=pytz.utc)
+        await self.tree_logs.append_log(
+            guild_id=guild_id,
+            data = {
+                'start': created_at.strftime(DATETIME_STRING_FORMAT),
+                'end':   deleted_at.strftime(DATETIME_STRING_FORMAT),
+                'type':  category
+            }
+        )
 
     @staticmethod
     def substitute_string(match: re.Match, index: int) -> bool:

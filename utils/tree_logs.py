@@ -32,7 +32,7 @@ class TreeLogFile:
             log_path = self.dir.joinpath(f"{guild_id}.csv")
             if not log_path.exists():
                 df = pandas.DataFrame(
-                    columns=['wet', 'dry']
+                    columns=['start', 'end', 'type']
                 )
                 await asyncio.to_thread(
                     lambda log_path=log_path, df=df: df.to_csv(
@@ -47,7 +47,8 @@ class TreeLogFile:
         self,
         guild_id: int,
         start: datetime = datetime.now(tz=pytz.utc) - timedelta(days=1),
-        end: datetime = datetime.now(tz=pytz.utc)
+        end: datetime = datetime.now(tz=pytz.utc),
+        filter_logs: tuple[str, ...] | None = ('water')
     ) -> pandas.DataFrame:
         """
         Returns the logs within the specified interval
@@ -58,6 +59,8 @@ class TreeLogFile:
         :type start: datetime
         :param end: The latest timestamp that you want to fetch
         :type end: datetime
+        :param filter_logs: The log types which you want to fetch
+        :type filter_logs: tuple[str, ...] | None
         :return: Pandas dataframe containing the logs
         :rtype: DataFrame
         """
@@ -75,21 +78,25 @@ class TreeLogFile:
             df = await asyncio.to_thread(
                 lambda log_path=log_path, date_format=DATETIME_STRING_FORMAT: pandas.read_csv(
                     filepath_or_buffer=log_path,
-                    parse_dates=['wet', 'dry'],
+                    parse_dates=['start', 'end'],
                     date_format=date_format
                 )
             )
 
         # set timezone as UTC
-        df[['wet', 'dry']] = df[['wet', 'dry']].apply(
+        df[['start', 'end']] = df[['start', 'end']].apply(
             lambda col: col.dt.tz_localize(pytz.utc)
         )
 
-        # only keep rows where wet is before dry
-        df = df[(df['wet'] <= df['dry'])]
+        # filter the log type
+        if filter_logs is not None:
+            df = df[df['type'].isin(filter_logs)]
+
+        # only keep rows where start is before end
+        df = df[(df['start'] <= df['end'])]
 
         # filter within the specified interval
-        df = df[(df['dry'] >= start) & (df['wet'] <= end)]
+        df = df[(df['end'] >= start) & (df['start'] <= end)]
 
         # remove invalid values
         return df.dropna()
@@ -100,7 +107,7 @@ class TreeLogFile:
         data: dict[str, any]
     ) -> None:
         """
-        Docstring for append_logs
+        Adds a row of data to the end of the CSV log
         
         :param guild_id: The guild ID of the guild you want to append the logs to
         :type guild_id: int
@@ -168,7 +175,7 @@ class TreeNextWater:
                 elif df.empty:
                     next_water = now
                 else:
-                    next_water = df['dry'].iloc[-1]
+                    next_water = df['end'].iloc[-1]
                 # set default next water
                 self.next_water.setdefault(guild_id, next_water)
             # signal that loading is finished

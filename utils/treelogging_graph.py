@@ -12,20 +12,20 @@ async def util_graph_summary(
 ):
     """
     Args:
-        df: a pandas dataframe containing two columns of datetime strings, 'wet' and 'dry'
-        max_duration: maximum difference between 'wet' and 'dry' before it is treated as an outlier
+        df: a pandas dataframe containing two columns of datetime strings, 'start' and 'end'
+        max_duration: maximum difference between 'start' and 'end' before it is treated as an outlier
         output_timezone: what timezone to convert the values to
     Returns:
         a io.BytesIO object representing a png of the graph
     """
     # convert timezones
-    df[['wet', 'dry']] = df[['wet', 'dry']].apply(
+    df[['start', 'end']] = df[['start', 'end']].apply(
         lambda col: col.dt.tz_convert(output_timezone)
     )
 
     # calculate uptime and downtime
-    df['uptime']   = df['dry'] - df['wet']
-    df['downtime'] = df['wet'] - df['dry'].shift(1)
+    df['uptime']   = df['end'] - df['start']
+    df['downtime'] = df['start'] - df['end'].shift(1)
 
     df['uptime']    = df['uptime'].dt.total_seconds()
     df['downtime']  = df['downtime'].dt.total_seconds()
@@ -37,9 +37,9 @@ async def util_graph_summary(
     df = df.dropna()
 
     # create columns for hour/day
-    df['hour_of_day'] = df['dry'].dt.hour
-    df['day_of_week'] = df['dry'].dt.day_of_week
-    df['date']        = df['dry'].dt.date
+    df['hour_of_day'] = df['end'].dt.hour
+    df['day_of_week'] = df['end'].dt.day_of_week
+    df['date']        = df['end'].dt.date
 
     # calculate averages for hour/day
     hourly_avg = df.groupby('hour_of_day')['downtime'].mean()
