@@ -25,10 +25,8 @@ for file in files:
     )
     # add a new "type" column
     df['type'] = "water"
-    # ???
-    new_path = os.path.join("data", f"{os.path.splitext(file)[0]}_new{os.path.splitext(file)[-1]}")
     # write the file back
     df.to_csv(
-        new_path, index=False,
+        path, index=False,
         encoding="utf-8"
     )

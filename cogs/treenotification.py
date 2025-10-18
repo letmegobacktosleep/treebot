@@ -322,18 +322,20 @@ class TreeNotifCog(commands.Cog):
         # do not log "water" category - this is already done by the treelogging cog
         if category == "water":
             raise KeyError("Watering logs should not be handled by this function")
-        # fetch the time that the message was created at
-        message = self.notifications[str(guild_id)][type]
-        created_at = message.created_at
-        deleted_at = datetime.now(tz=pytz.utc)
-        await self.tree_logs.append_log(
-            guild_id=guild_id,
-            data = {
-                'start': created_at.strftime(DATETIME_STRING_FORMAT),
-                'end':   deleted_at.strftime(DATETIME_STRING_FORMAT),
-                'type':  category
-            }
-        )
+        # check if the message exists
+        message = self.notifications[str(guild_id)][category]
+        if message is not None:
+            # fetch the time that the message was created at
+            created_at = message.created_at
+            deleted_at = datetime.now(tz=pytz.utc)
+            await self.tree_logs.append_log(
+                guild_id=guild_id,
+                data = {
+                    'start': created_at.strftime(DATETIME_STRING_FORMAT),
+                    'end':   deleted_at.strftime(DATETIME_STRING_FORMAT),
+                    'type':  category
+                }
+            )
 
     @staticmethod
     def substitute_string(match: re.Match, index: int) -> bool:

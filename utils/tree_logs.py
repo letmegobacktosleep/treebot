@@ -48,7 +48,7 @@ class TreeLogFile:
         guild_id: int,
         start: datetime = datetime.now(tz=pytz.utc) - timedelta(days=1),
         end: datetime = datetime.now(tz=pytz.utc),
-        filter_logs: tuple[str, ...] | None = ('water')
+        filter_logs: tuple[str, ...] | None = ('water',)
     ) -> pandas.DataFrame:
         """
         Returns the logs within the specified interval
