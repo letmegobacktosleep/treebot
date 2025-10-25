@@ -92,6 +92,7 @@ async def util_graph_summary(
     ax0.set_ylabel('Watering Downtime (seconds)')
     ax0.set_xticks(hourly_med.index)
     ax0.grid(True, linestyle='-', alpha=0.2)
+    ax0.set_ylim(top=ax0.get_ylim()[1]*1.1)
     ax0.legend(loc='upper center', ncol=3)
 
     # plot day_of_week
@@ -121,6 +122,7 @@ async def util_graph_summary(
     ax1.set_ylabel('Watering Downtime (seconds)')
     ax1.set_xticks(daily_med.index)
     ax1.grid(True, linestyle='-', alpha=0.2)
+    ax1.set_ylim(top=ax1.get_ylim()[1]*1.1)
     ax1.legend(loc='upper center', ncol=3)
 
     # plot downtime by date - line chart with error bars
