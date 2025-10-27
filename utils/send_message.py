@@ -36,6 +36,8 @@ async def util_fetch_channel(
             logger.warning(f"Failed to retrieve the channel: {channel_id}.\n{e}")
             return None
 
+    return channel
+
 async def util_send_message_in_channel(
     bot: commands.Bot,
     channel_id: int,
