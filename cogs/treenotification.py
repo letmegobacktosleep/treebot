@@ -209,10 +209,11 @@ class TreeNotifCog(commands.Cog):
                 guild_id=guild_id,
                 category=category
             )
-            await self.log_button_notification(
-                guild_id=guild_id,
-                category=category
-            )
+            if category != "water":
+                await self.log_button_notification(
+                    guild_id=guild_id,
+                    category=category
+                )
             self.notifications[str(guild_id)][category] = None
 
     @tasks.loop(minutes=30)
