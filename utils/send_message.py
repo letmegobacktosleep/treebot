@@ -1,21 +1,22 @@
 # import built-in packages
 import logging
+from datetime import datetime
 from typing import Optional
+from dataclasses import dataclass, field
 # import 3rd party packages
+import pytz
 import discord
 from discord.ext import commands
 
 # set up the logger
 logger = logging.getLogger(__name__)
 
-async def util_send_message_in_channel(
+async def util_fetch_channel(
     bot: commands.Bot,
-    channel_id: int,
-    content: Optional[int] = None,
-    files: Optional[list[discord.File]] = None
-) -> discord.Message:
+    channel_id: int
+) -> discord.abc.GuildChannel:
     """
-    Fetches a channel then attempts to send the message.
+    Fetches a channel
     """
     # fetch the channel
     channel = bot.get_channel(channel_id)
@@ -34,7 +35,30 @@ async def util_send_message_in_channel(
         except discord.HTTPException as e:
             logger.warning(f"Failed to retrieve the channel: {channel_id}.\n{e}")
             return None
-    
+
+async def util_send_message_in_channel(
+    bot: commands.Bot,
+    channel_id: int,
+    content: Optional[int] = None,
+    files: Optional[list[discord.File]] = None
+) -> discord.Message:
+    """
+    Fetches a channel then attempts to send the message.
+    """
+    # fetch the channel
+    channel = util_fetch_channel(
+        bot=bot,
+        channel_id=channel_id
+    )
+    if channel is None:
+        return None
+
+    # skip if no permission to send messages
+    permissions = channel.permissions_for(bot.user)
+    if not permissions.send_messages:
+        # logger.warning(f"No permission to send messages in channel %d", channel_id)
+        return None
+
     # send the message
     try:
         message = await channel.send(content=content, files=files)
@@ -43,7 +67,7 @@ async def util_send_message_in_channel(
         logger.warning(f"The channel could not be found: {channel_id}.\n{e}")
         return None
     except discord.Forbidden as e:
-        logger.warning(f"Insufficient permissions to access the channel: {channel_id}.\n{e}")
+        logger.warning(f"Insufficient permissions to send messages in channel: {channel_id}.\n{e}")
         return None
     except ValueError as e:
         logger.warning(f"The files or embeds list is not of the appropriate size: {channel_id}.\n{e}")
@@ -54,3 +78,10 @@ async def util_send_message_in_channel(
     except discord.HTTPException as e:
         logger.warning(f"Failed to retrieve the channel: {channel_id}.\n{e}")
         return None
+
+@dataclass
+class DummyMessage:
+    """
+    dummy message storing the created_at variable
+    """
+    created_at: datetime = field(default_factory=lambda: datetime.now(pytz.utc))

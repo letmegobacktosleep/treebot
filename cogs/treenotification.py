@@ -14,7 +14,7 @@ from utils.constants import DATETIME_STRING_FORMAT
 from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
 from utils.config import util_modify_config
-from utils.send_message import util_send_message_in_channel
+from utils.send_message import util_fetch_channel, util_send_message_in_channel, DummyMessage
 from utils.treenotification_emojis import button_emojis_from_message
 
 # set up the logger
@@ -153,41 +153,18 @@ class TreeNotifCog(commands.Cog):
         if config["channel_id"] is None:
             return
         # check if should send an insect notification
-        if config["insect"]:
-            if self.tree_has_insect(buttons=buttons, guild_id=guild_id):
-                await self.send_notification(
-                    config=config,
-                    guild_id=guild_id,
-                    category="insect"
-                )
-            else:
-                await self.delete_notification(
-                    guild_id=guild_id,
-                    category="insect"
-                )
-                await self.log_button_notification(
-                    guild_id=guild_id,
-                    category="insect"
-                )
-                self.notifications[str(guild_id)]["insect"] = None
-        # check if should send a fruit notification
-        if config["fruit"]:
-            if self.tree_has_basket(buttons=buttons):
-                await self.send_notification(
-                    config=config,
-                    guild_id=guild_id,
-                    category="fruit"
-                )
-            else:
-                await self.delete_notification(
-                    guild_id=guild_id,
-                    category="fruit"
-                )
-                await self.log_button_notification(
-                    guild_id=guild_id,
-                    category="fruit"
-                )
-                self.notifications[str(guild_id)]["fruit"] = None
+        await self.process_notification(
+            config=config,
+            guild_id=guild_id,
+            category="insect",
+            state=(await self.tree_has_insect(buttons=buttons, guild_id=guild_id))
+        )
+        await self.process_notification(
+            config=config,
+            guild_id=guild_id,
+            category="insect",
+            state=(await self.tree_has_basket(buttons=buttons))
+        )
 
     @tasks.loop(seconds=1)
     async def process_water_notification(self):
@@ -203,19 +180,36 @@ class TreeNotifCog(commands.Cog):
             if config["channel_id"] is None:
                 continue
             # check if should send a watering notification
-            if config["water"]:
-                if await self.tree_needs_watering(guild_id=guild_id):
-                    await self.send_notification(
-                        config=config,
-                        guild_id=guild_id,
-                        category="water"
-                    )
-                else:
-                    await self.delete_notification(
-                        guild_id=guild_id,
-                        category="water"
-                    )
-                    self.notifications[str(guild_id)]["water"] = None
+            await self.process_notification(
+                config=config,
+                guild_id=guild_id,
+                category="water",
+                state=(await self.tree_needs_watering(guild_id=guild_id))
+            )
+
+    async def process_notification(
+        self,
+        config: dict,
+        guild_id: int,
+        category: str,
+        state: bool
+    ) -> None:
+        """
+        Wrapper
+        """
+        if state:
+            await self.send_notification(
+                config=config,
+                guild_id=guild_id,
+                category=category
+            )
+        else:
+            await self.delete_notification(
+                config=config,
+                guild_id=guild_id,
+                category=category
+            )
+            self.notifications[str(guild_id)][category] = None
 
     @tasks.loop(minutes=30)
     async def remove_notifications(self):
@@ -234,22 +228,13 @@ class TreeNotifCog(commands.Cog):
             if channel_id is None:
                 continue
             # fetch the channel
+            channel = util_fetch_channel(
+                bot=self.bot,
+                channel_id=channel_id
+            )
             channel = self.bot.get_channel(channel_id)
             if channel is None:
-                try:
-                    channel = await self.bot.fetch_channel(channel_id)
-                except discord.InvalidData as e:
-                    logger.warning(f"Data received was invalid: {channel_id}.\n{e}")
-                    return None
-                except discord.NotFound as e:
-                    logger.warning(f"The channel could not be found: {channel_id}.\n{e}")
-                    return None
-                except discord.Forbidden as e:
-                    logger.warning(f"Insufficient permissions to access the channel: {channel_id}.\n{e}")
-                    return None
-                except discord.HTTPException as e:
-                    logger.warning(f"Failed to retrieve the channel: {channel_id}.\n{e}")
-                    return None
+                return None
             # fetch message history
             messages = []
             async for message in channel.history(limit=200):
@@ -273,47 +258,57 @@ class TreeNotifCog(commands.Cog):
             # skip if the message was already sent
             if self.notifications[str(guild_id)][category] is not None:
                 return
-            # fetch the message content and substitute pings and newlines
-            content = config["message"]
-            content = re.sub(r"(?i)`ping`", f"<@&{config[f'{category}_role_id']}>", content)
-            content = re.sub(r"(?i) ?`newline` ?", "\n", content)
-            # figure out which part of the message to use
-            index = 0
-            match category:
-                case "insect":
-                    index = 0
-                case "fruit":
-                    index = 1
-                case "water":
-                    index = 2
-            # alter the message string with the correct index
-            content = re.sub(
-                r"`.+?``.+?``.+?`",
-                lambda match, index=index: self.substitute_string(match=match, index=index),
-                content
-            )
-            # send the message and cache it
-            self.notifications[str(guild_id)][category] = await util_send_message_in_channel(
-                bot=self.bot,
-                channel_id=config["channel_id"],
-                content=content
-            )
+            # only try to send the message if enabled
+            message = None
+            if config[category]:
+                # fetch the message content and substitute pings and newlines
+                content = config["message"]
+                content = re.sub(r"(?i)`ping`", f"<@&{config[f'{category}_role_id']}>", content)
+                content = re.sub(r"(?i) ?`newline` ?", "\n", content)
+                # figure out which part of the message to use
+                index = 0
+                match category:
+                    case "insect":
+                        index = 0
+                    case "fruit":
+                        index = 1
+                    case "water":
+                        index = 2
+                # alter the message string with the correct index
+                content = re.sub(
+                    r"`.+?``.+?``.+?`",
+                    lambda match, index=index: self.substitute_string(match=match, index=index),
+                    content
+                )
+                # send the message
+                message = await util_send_message_in_channel(
+                    bot=self.bot,
+                    channel_id=config["channel_id"],
+                    content=content
+                )
+            # if the message wasn't sent, use a dummy message
+            if message is None:
+                message = DummyMessage()
+            # cache the message
+            self.notifications[str(guild_id)][category] = message
         # delete it if it should be temporary
         if config["temporary"]:
             await self.delete_notification(
+                config=config,
                 guild_id=guild_id,
                 category=category
             )
 
-    async def delete_notification(self, guild_id: int, category: str):
+    async def delete_notification(self, config: dict, guild_id: int, category: str):
         """
         delete the cached notification
         """
-        # check if the message exists
-        message = self.notifications[str(guild_id)][category]
-        if message is not None:
-            # delete the message and remove it from cache
-            await self.delete_message(message=message)
+        if config[category]:
+            # check if the message exists
+            message = self.notifications[str(guild_id)][category]
+            if message is not None:
+                # delete the message and remove it from cache
+                await self.delete_message(message=message)
 
     async def log_button_notification(self, guild_id: int, category: str) -> None:
         """
