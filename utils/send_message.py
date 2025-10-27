@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def util_fetch_channel(
     bot: commands.Bot,
     channel_id: int
-) -> discord.abc.GuildChannel:
+) -> discord.abc.GuildChannel | None:
     """
     Fetches a channel
     """
@@ -41,12 +41,12 @@ async def util_send_message_in_channel(
     channel_id: int,
     content: Optional[int] = None,
     files: Optional[list[discord.File]] = None
-) -> discord.Message:
+) -> discord.Message | None:
     """
     Fetches a channel then attempts to send the message.
     """
     # fetch the channel
-    channel = util_fetch_channel(
+    channel = await util_fetch_channel(
         bot=bot,
         channel_id=channel_id
     )
