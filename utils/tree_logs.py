@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 from pathlib import Path
 from datetime import datetime, timedelta
 import pytz
@@ -48,7 +49,7 @@ class TreeLogFile:
         log_path: Path,
         start: datetime,
         end: datetime,
-        filter_logs: tuple[str, ...]
+        filter_logs: tuple[str, ...] | None
     ) -> pandas.DataFrame:
         """
         Reads the logs in chunks and returns the logs within the specified interval
@@ -95,10 +96,10 @@ class TreeLogFile:
     async def read_log(
         self,
         guild_id: int,
-        start: datetime = datetime.now(tz=pytz.utc) - timedelta(days=1),
-        end: datetime = datetime.now(tz=pytz.utc),
+        start: datetime | None = None,
+        end: datetime | None = None,
         filter_logs: tuple[str, ...] | None = ('water',)
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame | None:
         """
         Returns the logs within the specified interval
         
@@ -121,6 +122,10 @@ class TreeLogFile:
         # wait until logs are loaded
         while not self.loaded:
             await asyncio.sleep(1)
+
+        # set default values for start and end if they are None
+        start = start or (datetime.now(tz=pytz.utc) - timedelta(days=1))
+        end = end or datetime.now(tz=pytz.utc)
 
         # read the csv log
         async with self.mutex[guild_id]:
@@ -186,7 +191,8 @@ class TreeLogFile:
         df = df.sort_values(by=['type', 'start'])
 
         # remove overlapping logs
-        df = df.groupby('type', group_keys=False).apply(remove_overlaps, include_groups=False)
+        df = df.groupby('type', group_keys=False)
+        df = df.apply(remove_overlaps, include_groups=False)
 
         # remove invalid values
         return df.dropna()
@@ -194,7 +200,7 @@ class TreeLogFile:
     async def append_log(
         self,
         guild_id: int,
-        data: dict[str, any]
+        data: dict[str, Any]
     ) -> None:
         """
         Adds a row of data to the end of the CSV log
@@ -203,13 +209,13 @@ class TreeLogFile:
         :type guild_id: int
         :param data: The data to be appended to the logs. 
         The key is the column label, the value is the data.
-        :type data: dict[str, any]
+        :type data: dict[str, Any]
         """
         log_path = self.dir.joinpath(f"{guild_id}.csv")
 
         # wait until logs are loaded
         while not self.loaded:
-            asyncio.sleep(1)
+            await asyncio.sleep(1)
 
         # append to the logs
         async with self.mutex[guild_id]:
@@ -239,7 +245,8 @@ class TreeNextWater:
         """
         self.tree_logs = tree_logs
         self.mutex = asyncio.Lock()
-        self.next_water = {}
+        self.next_water: dict[int, datetime] = {}
+        self.water_duration: dict[int, timedelta] = {}
         self.loaded = False
 
     async def load_logs(
@@ -260,21 +267,31 @@ class TreeNextWater:
                 df = await self.tree_logs.read_log(
                     guild_id=guild_id
                 )
-                if df is not None:
+                # default values if the data doesn't exist
+                if df is None:
                     next_water = now
+                    water_duration = timedelta()
                 elif df.empty:
                     next_water = now
+                    water_duration = timedelta()
                 else:
-                    next_water = df['end'].iloc[-1]
-                # set default next water
+                    # get the last row
+                    last_row = df.iloc[-1]
+                    # set 'end' as next_water
+                    next_water = last_row['end']
+                    # set the duration as end - start
+                    water_duration = last_row['end'] - last_row['start']
+                # set the values to next_water and water_duration
                 self.next_water.setdefault(guild_id, next_water)
+                self.water_duration.setdefault(guild_id, water_duration)
             # signal that loading is finished
             self.loaded = True
 
     async def update_guild(
         self,
         guild_id: int,
-        timestamp: datetime
+        timestamp: datetime,
+        duration: timedelta
     ) -> None:
         """
         Update the time when the tree can be watered next
@@ -290,11 +307,12 @@ class TreeNextWater:
 
         async with self.mutex:
             self.next_water[guild_id] = timestamp
+            self.water_duration[guild_id] = duration
 
     async def fetch_guild(
         self,
         guild_id: int
-    ) -> datetime:
+    ) -> tuple[datetime, timedelta]:
         """
         Fetch the time when the tree can be watered next
         
@@ -307,5 +325,10 @@ class TreeNextWater:
         while not self.loaded:
             await asyncio.sleep(1)
 
+        # get the values from the dict
         async with self.mutex:
-            return self.next_water.get(guild_id, datetime.now(tz=pytz.utc))
+            next_water = self.next_water.get(guild_id, datetime.now(tz=pytz.utc))
+            water_duration = self.water_duration.get(guild_id, timedelta())
+
+        # return the values
+        return next_water, water_duration
