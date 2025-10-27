@@ -376,7 +376,7 @@ class TreeNotifCog(commands.Cog):
         """
         checks whether the current time exceeds the next watering time
         """
-        next_water = await self.next_water.fetch_guild(guild_id=guild_id)
+        next_water, _ = await self.next_water.fetch_guild(guild_id=guild_id)
         return datetime.now(tz=pytz.utc) > next_water
 
     async def delete_message(self, message: discord.Message):

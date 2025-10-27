@@ -132,13 +132,16 @@ class TreeLoggingCog(commands.Cog):
             timestamp = int(timestamp.group())
             timestamp = datetime.fromtimestamp(timestamp=timestamp, tz=pytz.utc)
             # fetch the next water time
-            next_water = await self.next_water.fetch_guild(guild_id=guild_id)
+            next_water, water_duration = await self.next_water.fetch_guild(guild_id=guild_id)
             # skip logging if it is before edited_at or next_water
             if (
                 timestamp <= edited_at or
                 timestamp <= next_water
             ):
                 return
+            # offset if the time delta is less than the last recorded duration
+            if (timestamp - edited_at) < water_duration:
+                edited_at = timestamp - water_duration
             # append edited_at and timestamp to the log
             await self.tree_logs.append_log(
                 guild_id=guild_id,
@@ -149,7 +152,11 @@ class TreeLoggingCog(commands.Cog):
                 }
             )
             # update next_water
-            await self.next_water.update_guild(guild_id=guild_id, timestamp=timestamp)
+            await self.next_water.update_guild(
+                guild_id=guild_id,
+                timestamp=timestamp,
+                duration=timestamp - edited_at
+            )
 
     async def check_goal(
         self,
