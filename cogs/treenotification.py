@@ -157,13 +157,13 @@ class TreeNotifCog(commands.Cog):
             config=config,
             guild_id=guild_id,
             category="insect",
-            state=(await self.tree_has_insect(buttons=buttons, guild_id=guild_id))
+            state=self.tree_has_insect(buttons=buttons, guild_id=guild_id)
         )
         await self.process_notification(
             config=config,
             guild_id=guild_id,
             category="insect",
-            state=(await self.tree_has_basket(buttons=buttons))
+            state=self.tree_has_basket(buttons=buttons)
         )
 
     @tasks.loop(seconds=1)
