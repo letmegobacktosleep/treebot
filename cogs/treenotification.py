@@ -228,11 +228,10 @@ class TreeNotifCog(commands.Cog):
             if channel_id is None:
                 continue
             # fetch the channel
-            channel = util_fetch_channel(
+            channel = await util_fetch_channel(
                 bot=self.bot,
                 channel_id=channel_id
             )
-            channel = self.bot.get_channel(channel_id)
             if channel is None:
                 return None
             # fetch message history

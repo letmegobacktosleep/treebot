@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def util_fetch_channel(
     bot: commands.Bot,
     channel_id: int
-) -> discord.abc.GuildChannel | None:
+) -> discord.TextChannel | None:
     """
     Fetches a channel
     """
