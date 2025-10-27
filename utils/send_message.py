@@ -56,7 +56,7 @@ async def util_send_message_in_channel(
         return None
 
     # skip if no permission to send messages
-    permissions = channel.permissions_for(bot.user)
+    permissions = channel.permissions_for(channel.guild.me)
     if not permissions.send_messages:
         # logger.warning(f"No permission to send messages in channel %d", channel_id)
         return None
