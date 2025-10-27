@@ -455,7 +455,7 @@ class TreeLoggingCog(commands.Cog):
             filter_logs=None
         )
         # error if there are no logs
-        if df.empty:
+        if df is None or df.empty:
             await interaction.followup.send(
                 content=(
                     "The requested logs contain no data.\n"
@@ -471,9 +471,11 @@ class TreeLoggingCog(commands.Cog):
             await interaction.followup.send(
                 content=(
                     "Invalid timezone. Please change the timezone in general config\n"
-                    "Example configuration: `/config_general timezone:UTC` `/config_general timezone:Australia/Sydney`"
+                    "Example configuration: `/config_general timezone:UTC` "
+                    "`/config_general timezone:Australia/Sydney`"
                 )
             )
+            return
         # convert timezones
         df[['start', 'end']] = df[['start', 'end']].apply(
             lambda col: col.dt.tz_convert(output_timezone)

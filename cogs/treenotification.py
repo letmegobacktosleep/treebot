@@ -162,7 +162,7 @@ class TreeNotifCog(commands.Cog):
         await self.process_notification(
             config=config,
             guild_id=guild_id,
-            category="insect",
+            category="fruit",
             state=self.tree_has_basket(buttons=buttons)
         )
 
