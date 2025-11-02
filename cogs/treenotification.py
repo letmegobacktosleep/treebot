@@ -2,18 +2,15 @@
 import re
 import logging
 import asyncio
-from typing import Optional
 from datetime import datetime, timedelta
 # import 3rd party packages
 import pytz
 import discord
-from discord import app_commands
 from discord.ext import commands, tasks
 # import utils & cogs
 from utils.constants import DATETIME_STRING_FORMAT
 from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
-from utils.config import util_modify_config
 from utils.send_message import util_fetch_channel, util_send_message_in_channel, DummyMessage
 from utils.treenotification_emojis import button_emojis_from_message
 
@@ -393,44 +390,6 @@ class TreeNotifCog(commands.Cog):
         except discord.HTTPException as e:
             logger.warning(f"Failed to retrieve the message: {message.id}.\n{e}")
             return
-
-    @app_commands.command(
-        name="config_notif",
-        description="message sent when an action is available"
-    )
-    async def cmd_set_config_notifications(
-        self,
-        interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        temporary: Optional[bool],
-        insect: Optional[bool],
-        fruit: Optional[bool],
-        water: Optional[bool],
-        message: Optional[str],
-        insect_role_id: Optional[str],
-        fruit_role_id: Optional[str],
-        water_role_id: Optional[str]
-    ):
-        """
-        config category: notification
-        channel_id & tree_name & outlier_duration
-        """
-        await util_modify_config(
-            interaction=interaction,
-            config_class=self.config,
-            category="notification",
-            config_values=[
-                ("channel_id",     channel_id),
-                ("temporary",      temporary),
-                ("insect",         insect),
-                ("fruit",          fruit),
-                ("water",          water),
-                ("message",        message),
-                ("insect_role_id", int(insect_role_id) if insect_role_id is not None else None),
-                ("fruit_role_id",  int(fruit_role_id)  if fruit_role_id  is not None else None),
-                ("water_role_id",  int(water_role_id)  if water_role_id  is not None else None)
-            ]
-        )
 
 # setup this file as a cog?
 async def setup(bot):

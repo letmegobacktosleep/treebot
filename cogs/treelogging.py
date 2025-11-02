@@ -1,11 +1,8 @@
 # import built-in packages
 import re
-import json
 import logging
 import asyncio
 from io import BytesIO
-from pathlib import Path
-from typing import Optional
 from datetime import datetime, timedelta
 # import 3rd party packages
 import pytz
@@ -16,7 +13,6 @@ from discord.ext import commands, tasks
 from utils.constants import DATETIME_STRING_FORMAT, PATTERN_TIMESTAMP
 from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
-from utils.config import util_modify_config
 from utils.treelogging_graph import util_graph_summary
 from utils.send_message import util_send_message_in_channel
 
@@ -294,12 +290,18 @@ class TreeLoggingCog(commands.Cog):
                             guild_id=guild_id,
                             hours=24*365
                         )
+                        # calculate the number of days and hours
+                        days = config['total_hours'] // 24
+                        hours = config['total_hours'] % 24
+                        time_delta_str = f"{days} days"
+                        if hours:
+                            time_delta_str += f", {hours} hours"
                         # try to send the message
                         message = await util_send_message_in_channel(
                             bot=self.bot,
                             channel_id=config["channel_id"],
                             content=(
-                                f"### Past {config['total_hours']} Hours:\n"
+                                f"### Past {time_delta_str}:\n"
                                 f"`uptime:` `{100 * h_uptime / (h_uptime + h_downtime + 0.00001):7.4f}%`   "
                                 f"`wet:` `{h_uptime:6.0f}`   `dry:` `{h_downtime:6.0f}`\n"
                                 f"### Past Year:\n"
@@ -315,107 +317,6 @@ class TreeLoggingCog(commands.Cog):
                             await self.config.set_data(guild_id, "status_message", config)
                             # only send one message per server every time the loop runs
                             break
-
-    @app_commands.command(
-        name="config_general",
-        description="where the tree is located"
-    )
-    async def cmd_set_config_logs(
-        self,
-        interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        tree_name: Optional[str],
-        output_timezone: Optional[str],
-        outlier_duration: Optional[int]
-    ) -> None:
-        """
-        config category: general
-        channel_id & tree_name & outlier_duration
-        """
-        await util_modify_config(
-            interaction=interaction,
-            config_class=self.config,
-            category="general",
-            config_values=[
-                ("channel_id",       channel_id),
-                ("tree_name",        tree_name),
-                ("timezone",         output_timezone),
-                ("outlier_duration", outlier_duration)
-            ]
-        )
-
-    @app_commands.command(
-        name="config_status",
-        description="where the status messages are sent (valid_xxx are comma separated integers)"
-    )
-    async def cmd_set_config_status(
-        self,
-        interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        total_hours: Optional[int],
-        valid_days: Optional[str],
-        valid_hours: Optional[str]
-    ) -> None:
-        """
-        config category: status_message
-        channel_id, total_hours, valid_days, valid_hours
-        """
-        # Convert valid_days to a list of ints
-        if valid_days is not None:
-            valid_days_int = [int(i.strip()) for i in valid_days.split(",")]
-        else:
-            valid_days_int = None
-        # Convert valid_hours to a list of ints
-        if valid_hours is not None:
-            valid_hours_int = [int(i.strip()) for i in valid_hours.split(",")]
-        else:
-            valid_hours_int = None
-
-        await util_modify_config(
-            interaction=interaction,
-            config_class=self.config,
-            category="status_message",
-            config_values=[
-                ("channel_id",  channel_id),
-                ("total_hours", total_hours),
-                ("valid_days",  valid_days_int),
-                ("valid_hours", valid_hours_int)
-            ]
-        )
-
-    @app_commands.command(
-        name="config_goal",
-        description="conditions for reaching the goal"
-    )
-    async def cmd_set_config_goal(
-        self,
-        interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        goal: Optional[int],
-        greater_than: Optional[bool],
-        pattern: Optional[str],
-        message: Optional[str],
-        reached: Optional[bool]
-    ) -> None:
-        """
-        config category: tree_goal
-        channel_id, goal, greater_than, pattern, message, reached
-        """
-        if goal is not None:
-            reached = False
-        await util_modify_config(
-            interaction=interaction,
-            config_class=self.config,
-            category="tree_goal",
-            config_values=[
-                ("channel_id",   channel_id),
-                ("goal",         goal),
-                ("greater_than", greater_than),
-                ("pattern",      pattern),
-                ("message",      message),
-                ("reached",      reached)
-            ]
-        )
 
     @app_commands.command(
         name="watering_logs",

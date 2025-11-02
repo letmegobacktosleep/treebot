@@ -49,6 +49,7 @@ class TreeBot(commands.Bot):
 
     async def setup_hook(self):
         # add cogs
+        await self.load_extension("cogs.config_commands")
         await self.load_extension("cogs.treelogging")
         await self.load_extension("cogs.treenotification")
         # sync commands
