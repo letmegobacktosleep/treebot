@@ -272,8 +272,12 @@ class TreeLoggingCog(commands.Cog):
                 for i, hour in enumerate(config["valid_hours"]):
                     # doesn't exist yet
                     if i >= len(config["next_message"]):
+                        # set the hour
                         next_message = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
-                        next_message = next_message + timedelta(days=1)
+                        # shift until the next valid day
+                        while next_message.weekday() not in config["valid_days"]:
+                            next_message = next_message + timedelta(days=1)
+                        # add to next_message
                         config["next_message"].append(next_message.strftime(DATETIME_STRING_FORMAT))
                         await self.config.set_data(guild_id, "status_message", config)
                     # remove unused next_message
