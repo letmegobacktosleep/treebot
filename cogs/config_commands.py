@@ -70,9 +70,11 @@ class ConfigCog(commands.Cog):
         config category: status_message
         channel_id, total_hours, valid_days, valid_hours
         """
+        next_message = None
         # Convert valid_days to a list of ints
         if valid_days is not None:
             valid_days_int = [int(i.strip()) for i in valid_days.split(",")]
+            next_message = []
         else:
             valid_days_int = None
         # Convert valid_hours to a list of ints
@@ -81,7 +83,6 @@ class ConfigCog(commands.Cog):
             next_message = []
         else:
             valid_hours_int = None
-            next_message = None
 
         await util_modify_config(
             interaction=interaction,
