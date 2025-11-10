@@ -78,8 +78,10 @@ class ConfigCog(commands.Cog):
         # Convert valid_hours to a list of ints
         if valid_hours is not None:
             valid_hours_int = [int(i.strip()) for i in valid_hours.split(",")]
+            next_message = []
         else:
             valid_hours_int = None
+            next_message = None
 
         await util_modify_config(
             interaction=interaction,
@@ -89,7 +91,8 @@ class ConfigCog(commands.Cog):
                 ("channel_id",  channel_id),
                 ("total_hours", total_hours),
                 ("valid_days",  valid_days_int),
-                ("valid_hours", valid_hours_int)
+                ("valid_hours", valid_hours_int),
+                ("next_message", next_message)
             ]
         )
 
