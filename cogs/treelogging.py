@@ -274,6 +274,10 @@ class TreeLoggingCog(commands.Cog):
                     if i >= len(config["next_message"]):
                         # set the hour
                         next_message = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+                        # if it is before today
+                        if next_message < dt:
+                            # shift to the next day
+                            next_message = next_message + timedelta(days=1)
                         # shift until the next valid day
                         while next_message.weekday() not in config["valid_days"]:
                             next_message = next_message + timedelta(days=1)
@@ -320,7 +324,10 @@ class TreeLoggingCog(commands.Cog):
                         if message is not None:
                             # update the time for the next message
                             next_message = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
-                            next_message = next_message + timedelta(days=1)
+                            # shift until the next valid day
+                            while next_message.weekday() not in config["valid_days"]:
+                                next_message = next_message + timedelta(days=1)
+                            # set the new time
                             config["next_message"][i] = next_message.strftime(DATETIME_STRING_FORMAT)
                             await self.config.set_data(guild_id, "status_message", config)
                             # only send one message per server every time the loop runs
