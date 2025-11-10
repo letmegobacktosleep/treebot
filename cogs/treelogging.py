@@ -278,7 +278,7 @@ class TreeLoggingCog(commands.Cog):
                         await self.config.set_data(guild_id, "status_message", config)
                     # remove unused next_message
                     if len(config["next_message"]) > len(config["valid_hours"]):
-                        config["next_message"] = config["next_message"][:1 + len(config["valid_hours"])]
+                        config["next_message"] = config["next_message"][:len(config["valid_hours"])]
                         await self.config.set_data(guild_id, "status_message", config)
                     # check the config
                     next_message = config["next_message"][i]
