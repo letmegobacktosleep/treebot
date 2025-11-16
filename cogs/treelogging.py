@@ -324,6 +324,8 @@ class TreeLoggingCog(commands.Cog):
                         if message is not None:
                             # update the time for the next message
                             next_message = dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+                            # shift to the next day
+                            next_message = next_message + timedelta(days=1)
                             # shift until the next valid day
                             while next_message.weekday() not in config["valid_days"]:
                                 next_message = next_message + timedelta(days=1)
