@@ -375,10 +375,12 @@ class TreeNotifCog(commands.Cog):
         next_water, _ = await self.next_water.fetch_guild(guild_id=guild_id)
         return datetime.now(tz=pytz.utc) > next_water
 
-    async def delete_message(self, message: discord.Message):
+    async def delete_message(self, message: discord.Message | DummyMessage):
         """
         helper to delete a message, logs exceptions
         """
+        if isinstance(message, DummyMessage):
+            return
         try:
             await message.delete()
         except discord.NotFound as e:
