@@ -10,7 +10,7 @@ from discord.ext import commands
 # import utils & cogs
 from utils.json import BotConfigFile
 from utils.config import util_modify_config
-from utils.send_message import util_delete_message
+from utils.send_message import util_delete_message, DummyMessage
 
 # set up the logger
 logger = logging.getLogger(__name__)
