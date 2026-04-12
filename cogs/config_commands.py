@@ -203,6 +203,7 @@ class ConfigCog(commands.Cog):
 
         # fetch the message content and substitute pings and newlines
         content = config["message"]
+        content = re.sub(r"(?i)`ping`", "<role ping>", content)
         content = re.sub(r"(?i) ?`newline` ?", "\n", content)
         # figure out which part of the message to use
         index = 0
@@ -214,7 +215,7 @@ class ConfigCog(commands.Cog):
             case "water":
                 index = 2
         # function for string substitution
-        def substitute_string(match: re.Match, index: int) -> bool:
+        def substitute_string(match: re.Match, index: int) -> str:
             """
             Replaces a string such as `zero``one``two` with `zero` for index 0.
             """
@@ -236,27 +237,27 @@ class ConfigCog(commands.Cog):
                 channel = await self.bot.fetch_channel(channel_id)
             except discord.InvalidData as e:
                 await interaction.response.send_message(
-                    content=f"Data received was invalid: {channel_id}.\n{e}",
+                    content=f"Data received was invalid: ({channel_id}).```\n{e}```",
                     ephemeral=True
                 )
                 return
             except discord.NotFound as e:
                 await interaction.response.send_message(
-                    content=f"The channel could not be found: {channel_id}.\n{e}",
+                    content=f"The channel could not be found: ({channel_id}).```\n{e}```",
                     ephemeral=True
                 )
                 return
 
             except discord.Forbidden as e:
                 await interaction.response.send_message(
-                    content=f"Insufficient permissions to access the channel: {channel_id}.\n{e}",
+                    content=f"Insufficient permissions to access the channel: ({channel_id}).```\n{e}```",
                     ephemeral=True
                 )
                 return
 
             except discord.HTTPException as e:
                 await interaction.response.send_message(
-                    content=f"Failed to retrieve the channel: {channel_id}.\n{e}",
+                    content=f"Failed to retrieve the channel: ({channel_id}).```\n{e}```",
                     ephemeral=True
                 )
                 return
@@ -265,7 +266,7 @@ class ConfigCog(commands.Cog):
         permissions = channel.permissions_for(channel.guild.me)
         if not permissions.send_messages:
             await interaction.response.send_message(
-                content=f"No permission to send messages in channel {channel_id}",
+                content=f"No permission to send messages in channel <#{channel_id}> ({channel_id})",
                 ephemeral=True
             )
             return
@@ -275,37 +276,31 @@ class ConfigCog(commands.Cog):
             message = await channel.send(content=content, files=None)
         except discord.NotFound as e:
             await interaction.response.send_message(
-                content=f"The channel could not be found: {channel_id}.\n{e}",
+                content=f"The channel could not be found: <#{channel_id}> ({channel_id}).```\n{e}```",
                 ephemeral=True
             )
             return
         except discord.Forbidden as e:
             await interaction.response.send_message(
-                content=f"Insufficient permissions to send messages in channel: {channel_id}.\n{e}",
+                content=f"Insufficient permissions to send messages in channel: <#{channel_id}> ({channel_id}).```\n{e}```",
                 ephemeral=True
             )
             return
         except ValueError as e:
             await interaction.response.send_message(
-                content=f"The files or embeds list is not of the appropriate size: {channel_id}.\n{e}",
-                ephemeral=True
-            )
-            return
-        except ValueError as e:
-            await interaction.response.send_message(
-                content=f"You specified both file and files, or you specified both embed and embeds, or the reference object is not a Message, MessageReference or PartialMessage: {channel_id}.\n{e}",
+                content=f"You specified both file and files, or you specified both embed and embeds, or the reference object is not a Message, MessageReference or PartialMessage: {channel_id}.```\n{e}```",
                 ephemeral=True
             )
             return
         except discord.HTTPException as e:
             await interaction.response.send_message(
-                content=f"Failed to retrieve the channel: {channel_id}.\n{e}",
+                content=f"Failed to retrieve the channel: {channel_id}.```\n{e}```",
                 ephemeral=True
             )
             return
 
         await interaction.response.send_message(
-            content=f"Successfully sent message in <#{channel.id}> : {message.content}.",
+            content=f"Successfully sent message in <#{channel.id}> ({channel_id}) : {message.jump_url}.",
             ephemeral=True
         )
 

@@ -334,7 +334,7 @@ class TreeNotifCog(commands.Cog):
             )
 
     @staticmethod
-    def substitute_string(match: re.Match, index: int) -> bool:
+    def substitute_string(match: re.Match, index: int) -> str:
         """
         Replaces a string such as `zero``one``two` with `zero` for index 0.
         """

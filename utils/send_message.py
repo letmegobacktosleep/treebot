@@ -80,9 +80,6 @@ async def util_send_message_in_channel(
         logger.warning(f"Insufficient permissions to send messages in channel: {channel_id}.\n{e}")
         return None
     except ValueError as e:
-        logger.warning(f"The files or embeds list is not of the appropriate size: {channel_id}.\n{e}")
-        return None
-    except ValueError as e:
         logger.warning(f"You specified both file and files, or you specified both embed and embeds, or the reference object is not a Message, MessageReference or PartialMessage: {channel_id}.\n{e}")
         return None
     except discord.HTTPException as e:
