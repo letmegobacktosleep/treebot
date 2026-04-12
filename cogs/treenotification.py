@@ -267,14 +267,12 @@ class TreeNotifCog(commands.Cog):
                 content = re.sub(r"(?i)`ping`", f"<@&{config[f'{category}_role_id']}>", content)
                 content = re.sub(r"(?i) ?`newline` ?", "\n", content)
                 # figure out which part of the message to use
-                index = 0
-                match category:
-                    case "insect":
-                        index = 0
-                    case "fruit":
-                        index = 1
-                    case "water":
-                        index = 2
+                index_map = {
+                    "insect": 0,
+                    "fruit":  1,
+                    "water":  2
+                }
+                index = index_map.get(category, 2)
                 # alter the message string with the correct index
                 content = re.sub(
                     r"`.+?``.+?``.+?`",

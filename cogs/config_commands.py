@@ -206,14 +206,12 @@ class ConfigCog(commands.Cog):
         content = re.sub(r"(?i)`ping`", "<role ping>", content)
         content = re.sub(r"(?i) ?`newline` ?", "\n", content)
         # figure out which part of the message to use
-        index = 0
-        match str(category):
-            case "insect":
-                index = 0
-            case "fruit":
-                index = 1
-            case "water":
-                index = 2
+        index_map = {
+            "insect": 0,
+            "fruit": 1,
+            "water": 2
+        }
+        index = index_map.get(category.value, 0)
         # function for string substitution
         def substitute_string(match: re.Match, index: int) -> str:
             """
