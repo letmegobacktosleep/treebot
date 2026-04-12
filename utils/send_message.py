@@ -11,6 +11,14 @@ from discord.ext import commands
 # set up the logger
 logger = logging.getLogger(__name__)
 
+@dataclass
+class DummyMessage:
+    """
+    dummy message storing the created_at variable
+    """
+    created_at: datetime = field(default_factory=lambda: datetime.now(pytz.utc))
+
+
 async def util_fetch_channel(
     bot: commands.Bot,
     channel_id: int
@@ -98,10 +106,3 @@ async def util_delete_message(message: discord.Message | DummyMessage):
     except discord.HTTPException as e:
         logger.warning(f"Failed to retrieve the message: {message.id}.\n{e}")
         return
-
-@dataclass
-class DummyMessage:
-    """
-    dummy message storing the created_at variable
-    """
-    created_at: datetime = field(default_factory=lambda: datetime.now(pytz.utc))
