@@ -150,6 +150,7 @@ class ConfigCog(commands.Cog):
         channel_id: Optional[str], # too large for an int?
         persistence: Optional[app_commands.Choice[str]],
         max_notif_age: Optional[int],
+        water_notif_delay: Optional[int],
         insect: Optional[bool],
         fruit: Optional[bool],
         water: Optional[bool],
@@ -172,16 +173,17 @@ class ConfigCog(commands.Cog):
             config_class=self.config,
             category="notification",
             config_values=[
-                ("channel_id",     channel_id),
-                ("persistence",    persistence_str),
-                ("max_notif_age",  max_notif_age),
-                ("insect",         insect),
-                ("fruit",          fruit),
-                ("water",          water),
-                ("message",        message),
-                ("insect_role_id", int(insect_role_id) if insect_role_id is not None else None),
-                ("fruit_role_id",  int(fruit_role_id)  if fruit_role_id  is not None else None),
-                ("water_role_id",  int(water_role_id)  if water_role_id  is not None else None)
+                ("channel_id",        channel_id),
+                ("persistence",       persistence_str),
+                ("max_notif_age",     max_notif_age),
+                ("water_notif_delay", water_notif_delay),
+                ("insect",            insect),
+                ("fruit",             fruit),
+                ("water",             water),
+                ("message",           message),
+                ("insect_role_id",    int(insect_role_id) if insect_role_id is not None else None),
+                ("fruit_role_id",     int(fruit_role_id)  if fruit_role_id  is not None else None),
+                ("water_role_id",     int(water_role_id)  if water_role_id  is not None else None)
             ]
         )
 

@@ -163,6 +163,7 @@ class TreeNotifCog(commands.Cog):
             category="insect",
             state=self.tree_has_insect(buttons=buttons, guild_id=guild_id)
         )
+        # check if should send a fruit notification
         await self.process_notification(
             config=config,
             guild_id=guild_id,
@@ -188,7 +189,12 @@ class TreeNotifCog(commands.Cog):
                 config=config,
                 guild_id=guild_id,
                 category="water",
-                state=(await self.tree_needs_watering(guild_id=guild_id))
+                state=(
+                    await self.tree_needs_watering(
+                        guild_id=guild_id,
+                        delay=config.get("water_notif_delay", 0)
+                    )
+                )
             )
 
     async def process_notification(
@@ -220,7 +226,8 @@ class TreeNotifCog(commands.Cog):
                 )
             # small delay to prevent double messages
             await asyncio.sleep(0.5)
-            self.notifications[str(guild_id)][category] = None
+            async with self.message_mutex:
+                self.notifications[str(guild_id)][category] = None
 
     @tasks.loop(minutes=30)
     async def remove_notifications(self):
@@ -389,12 +396,12 @@ class TreeNotifCog(commands.Cog):
             return True
         return False
 
-    async def tree_needs_watering(self, guild_id: int):
+    async def tree_needs_watering(self, guild_id: int, delay: int = 0):
         """
         checks whether the current time exceeds the next watering time
         """
         next_water, _ = await self.next_water.fetch_guild(guild_id=guild_id)
-        return datetime.now(tz=pytz.utc) > next_water
+        return datetime.now(tz=pytz.utc) + timedelta(seconds=delay) > next_water
 
 # setup this file as a cog?
 async def setup(bot):
