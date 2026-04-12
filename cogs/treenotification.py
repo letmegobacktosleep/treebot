@@ -251,11 +251,25 @@ class TreeNotifCog(commands.Cog):
                     message.id not in self.notifications[str(guild_id)].values()
                 ):
                     messages.append(message)
-            # bulk delete the messages
-            if len(messages) > 0:
-                await channel.delete_messages(messages, reason="Removing dead messages")
-            # wait a while to prevent rate limiting
-            await asyncio.sleep(10)
+            # check if the bot has permission to bulk-delete
+            can_bulk_delete = False
+            try:
+                permissions = channel.permissions_for(channel.guild.me)
+                can_bulk_delete = permissions.manage_messages
+            except Exception: # pylint: disable=broad-exception-caught
+                pass
+            if can_bulk_delete:
+                # bulk delete the messages
+                if len(messages) > 0:
+                    await channel.delete_messages(messages, reason="Removing dead messages")
+                # wait a while to prevent rate limiting
+                await asyncio.sleep(10)
+            else:
+                # delete messages one-by-one
+                for message in messages:
+                    await util_delete_message(message=message)
+                    # wait a while to prevent rate limiting
+                    await asyncio.sleep(5)
 
     async def send_notification(self, config: dict, guild_id: int, category: str):
         """
