@@ -22,7 +22,7 @@ class DummyMessage:
 async def util_fetch_channel(
     bot: commands.Bot,
     channel_id: int
-) -> discord.TextChannel | None:
+) -> discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread | discord.TextChannel | None:
     """
     Fetches a channel
     """
@@ -49,8 +49,8 @@ async def util_fetch_channel(
 async def util_send_message_in_channel(
     bot: commands.Bot,
     channel_id: int,
-    content: Optional[int] = None,
-    files: Optional[list[discord.File]] = None
+    content: str | None = None,
+    files: list[discord.File] | None = None
 ) -> discord.Message | None:
     """
     Fetches a channel then attempts to send the message.

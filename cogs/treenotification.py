@@ -36,7 +36,13 @@ class TreeNotifCog(commands.Cog):
         self.data_folder = "data"
         self.tree_logs = tree_logs
         self.next_water = next_water
-        self.notifications = {}
+        self.notifications: dict[str, dict[str, int | None]] = {}
+
+        self.index_map = {
+            "insect": 0,
+            "fruit":  1,
+            "water":  2
+        }
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -216,10 +222,10 @@ class TreeNotifCog(commands.Cog):
     @tasks.loop(minutes=30)
     async def remove_notifications(self):
         """
-        cleans up messages sent more than an hour ago in the tree channel
+        cleans up messages sent more than half an hour ago in the tree channel
         """
         # get the current time and offset it by an hour
-        cutoff = datetime.now(tz=pytz.utc) - timedelta(hours=1)
+        cutoff = datetime.now(tz=pytz.utc) - timedelta(minutes=30)
         # iterate through guild IDs
         guild_ids = [guild.id for guild in self.bot.guilds]
         for guild_id in guild_ids:
@@ -241,7 +247,8 @@ class TreeNotifCog(commands.Cog):
             async for message in channel.history(limit=200):
                 if (
                     message.author == self.bot.user and
-                    message.created_at < cutoff
+                    message.created_at < cutoff and
+                    message.id not in self.notifications[str(guild_id)].values()
                 ):
                     messages.append(message)
             # bulk delete the messages
@@ -267,12 +274,7 @@ class TreeNotifCog(commands.Cog):
                 content = re.sub(r"(?i)`ping`", f"<@&{config[f'{category}_role_id']}>", content)
                 content = re.sub(r"(?i) ?`newline` ?", "\n", content)
                 # figure out which part of the message to use
-                index_map = {
-                    "insect": 0,
-                    "fruit":  1,
-                    "water":  2
-                }
-                index = index_map.get(category, 2)
+                index = self.index_map.get(category, 2)
                 # alter the message string with the correct index
                 content = re.sub(
                     r"`.+?``.+?``.+?`",
