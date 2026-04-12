@@ -81,6 +81,24 @@ async def util_send_message_in_channel(
         logger.warning(f"Failed to retrieve the channel: {channel_id}.\n{e}")
         return None
 
+async def util_delete_message(message: discord.Message | DummyMessage):
+    """
+    Deletes a message, logs exceptions
+    """
+    if isinstance(message, DummyMessage) or message is None:
+        return
+    try:
+        await message.delete()
+    except discord.NotFound as e:
+        logger.warning(f"The message could not be found: {message.id}.\n{e}")
+        return
+    except discord.Forbidden as e:
+        logger.warning(f"Insufficient permissions to delete the message: {message.id}.\n{e}")
+        return
+    except discord.HTTPException as e:
+        logger.warning(f"Failed to retrieve the message: {message.id}.\n{e}")
+        return
+
 @dataclass
 class DummyMessage:
     """

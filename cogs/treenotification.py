@@ -11,7 +11,7 @@ from discord.ext import commands, tasks
 from utils.constants import DATETIME_STRING_FORMAT
 from utils.tree_logs import TreeLogFile, TreeNextWater
 from utils.json import BotConfigFile
-from utils.send_message import util_fetch_channel, util_send_message_in_channel, DummyMessage
+from utils.send_message import util_fetch_channel, util_send_message_in_channel, util_delete_message, DummyMessage
 from utils.treenotification_emojis import button_emojis_from_message
 
 # set up the logger
@@ -309,7 +309,7 @@ class TreeNotifCog(commands.Cog):
             message = self.notifications[str(guild_id)][category]
             if message is not None:
                 # delete the message and remove it from cache
-                await self.delete_message(message=message)
+                await util_delete_message(message=message)
 
     async def log_button_notification(self, guild_id: int, category: str) -> None:
         """
@@ -374,24 +374,6 @@ class TreeNotifCog(commands.Cog):
         """
         next_water, _ = await self.next_water.fetch_guild(guild_id=guild_id)
         return datetime.now(tz=pytz.utc) > next_water
-
-    async def delete_message(self, message: discord.Message | DummyMessage):
-        """
-        helper to delete a message, logs exceptions
-        """
-        if isinstance(message, DummyMessage):
-            return
-        try:
-            await message.delete()
-        except discord.NotFound as e:
-            logger.warning(f"The message could not be found: {message.id}.\n{e}")
-            return
-        except discord.Forbidden as e:
-            logger.warning(f"Insufficient permissions to delete the message: {message.id}.\n{e}")
-            return
-        except discord.HTTPException as e:
-            logger.warning(f"Failed to retrieve the message: {message.id}.\n{e}")
-            return
 
 # setup this file as a cog?
 async def setup(bot):

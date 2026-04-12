@@ -1,13 +1,16 @@
 # import built-in packages
 import logging
 from typing import Optional
+import re
 # import 3rd party packages
+import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands
 # import utils & cogs
 from utils.json import BotConfigFile
 from utils.config import util_modify_config
+from utils.send_message import util_delete_message
 
 # set up the logger
 logger = logging.getLogger(__name__)
@@ -168,6 +171,146 @@ class ConfigCog(commands.Cog):
                 ("water_role_id",  int(water_role_id)  if water_role_id  is not None else None)
             ]
         )
+
+    @app_commands.command(
+        name="config_notif_test",
+        description="test whether the bot can send messages"
+    )
+    @app_commands.choices(category=[
+        app_commands.Choice(name="insect", value="insect"),
+        app_commands.Choice(name="fruit", value="fruit"),
+        app_commands.Choice(name="water", value="water"),
+    ])
+    async def cmd_test_notifications(
+        self,
+        interaction: discord.Interaction,
+        category: app_commands.Choice[str]
+    ):
+        """
+        Test whether the notification works
+        """
+        if not interaction.guild:
+            await interaction.response.send_message(
+                content="This command must be used in a guild",
+                ephemeral=True
+            )
+            return
+
+        config = await self.config.get_data(
+            interaction.guild.id,
+            "notification"
+        )
+
+        # fetch the message content and substitute pings and newlines
+        content = config["message"]
+        content = re.sub(r"(?i) ?`newline` ?", "\n", content)
+        # figure out which part of the message to use
+        index = 0
+        match category:
+            case "insect":
+                index = 0
+            case "fruit":
+                index = 1
+            case "water":
+                index = 2
+        # function for string substitution
+        def substitute_string(match: re.Match, index: int) -> bool:
+            """
+            Replaces a string such as `zero``one``two` with `zero` for index 0.
+            """
+            match = str(match.group())
+            match = match.strip("`").split("``")
+            return match[index]
+        # alter the message string with the correct index
+        content = re.sub(
+            r"`.+?``.+?``.+?`",
+            lambda match, index=index: substitute_string(match=match, index=index),
+            content
+        )
+
+        # fetch the channel
+        channel_id = config["channel_id"]
+        channel = self.bot.get_channel(channel_id)
+        if channel is None:
+            try:
+                channel = await self.bot.fetch_channel(channel_id)
+            except discord.InvalidData as e:
+                await interaction.response.send_message(
+                    content=f"Data received was invalid: {channel_id}.\n{e}",
+                    ephemeral=True
+                )
+                return
+            except discord.NotFound as e:
+                await interaction.response.send_message(
+                    content=f"The channel could not be found: {channel_id}.\n{e}",
+                    ephemeral=True
+                )
+                return
+
+            except discord.Forbidden as e:
+                await interaction.response.send_message(
+                    content=f"Insufficient permissions to access the channel: {channel_id}.\n{e}",
+                    ephemeral=True
+                )
+                return
+
+            except discord.HTTPException as e:
+                await interaction.response.send_message(
+                    content=f"Failed to retrieve the channel: {channel_id}.\n{e}",
+                    ephemeral=True
+                )
+                return
+
+        # skip if no permission to send messages
+        permissions = channel.permissions_for(channel.guild.me)
+        if not permissions.send_messages:
+            await interaction.response.send_message(
+                content=f"No permission to send messages in channel {channel_id}",
+                ephemeral=True
+            )
+            return
+
+        # send the message
+        try:
+            message = await channel.send(content=content, files=None)
+        except discord.NotFound as e:
+            await interaction.response.send_message(
+                content=f"The channel could not be found: {channel_id}.\n{e}",
+                ephemeral=True
+            )
+            return
+        except discord.Forbidden as e:
+            await interaction.response.send_message(
+                content=f"Insufficient permissions to send messages in channel: {channel_id}.\n{e}",
+                ephemeral=True
+            )
+            return
+        except ValueError as e:
+            await interaction.response.send_message(
+                content=f"The files or embeds list is not of the appropriate size: {channel_id}.\n{e}",
+                ephemeral=True
+            )
+            return
+        except ValueError as e:
+            await interaction.response.send_message(
+                content=f"You specified both file and files, or you specified both embed and embeds, or the reference object is not a Message, MessageReference or PartialMessage: {channel_id}.\n{e}",
+                ephemeral=True
+            )
+            return
+        except discord.HTTPException as e:
+            await interaction.response.send_message(
+                content=f"Failed to retrieve the channel: {channel_id}.\n{e}",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.send_message(
+            content=f"Successfully sent message in <#{channel.id}> : {message.content}.",
+            ephemeral=True
+        )
+
+        await asyncio.sleep(10)
+        await util_delete_message(message=message)
 
 # setup this file as a cog?
 async def setup(bot):
