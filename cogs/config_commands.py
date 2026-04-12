@@ -138,11 +138,18 @@ class ConfigCog(commands.Cog):
         name="config_notif",
         description="message sent when an action is available"
     )
+    @app_commands.choices(persistence=[
+        app_commands.Choice(name="delete_immediately", value="delete_immediately"),
+        app_commands.Choice(name="delete_after_event", value="delete_after_event"),
+        app_commands.Choice(name="delete_after_expiry", value="delete_after_expiry"),
+        app_commands.Choice(name="never_delete", value="never_delete"),
+    ])
     async def cmd_set_config_notifications(
         self,
         interaction: discord.Interaction,
         channel_id: Optional[str], # too large for an int?
-        temporary: Optional[bool],
+        persistence: Optional[app_commands.Choice[str]],
+        max_notif_age: Optional[int],
         insect: Optional[bool],
         fruit: Optional[bool],
         water: Optional[bool],
@@ -155,13 +162,19 @@ class ConfigCog(commands.Cog):
         config category: notification
         channel_id & tree_name & outlier_duration
         """
+
+        persistence_str = None
+        if persistence is not None:
+            persistence_str = persistence.value
+
         await util_modify_config(
             interaction=interaction,
             config_class=self.config,
             category="notification",
             config_values=[
                 ("channel_id",     channel_id),
-                ("temporary",      temporary),
+                ("persistence",    persistence_str),
+                ("max_notif_age",  max_notif_age),
                 ("insect",         insect),
                 ("fruit",          fruit),
                 ("water",          water),

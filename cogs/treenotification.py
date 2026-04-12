@@ -3,6 +3,7 @@ import re
 import logging
 import asyncio
 from datetime import datetime, timedelta
+from typing import Any
 # import 3rd party packages
 import pytz
 import discord
@@ -36,7 +37,7 @@ class TreeNotifCog(commands.Cog):
         self.data_folder = "data"
         self.tree_logs = tree_logs
         self.next_water = next_water
-        self.notifications: dict[str, dict[str, int | None]] = {}
+        self.notifications: dict[str, dict[str, Any]] = {}
 
         self.index_map = {
             "insect": 0,
@@ -217,6 +218,8 @@ class TreeNotifCog(commands.Cog):
                     guild_id=guild_id,
                     category=category
                 )
+            # small delay to prevent double messages
+            await asyncio.sleep(0.5)
             self.notifications[str(guild_id)][category] = None
 
     @tasks.loop(minutes=30)
@@ -224,13 +227,14 @@ class TreeNotifCog(commands.Cog):
         """
         cleans up messages sent more than half an hour ago in the tree channel
         """
-        # get the current time and offset it by an hour
-        cutoff = datetime.now(tz=pytz.utc) - timedelta(minutes=30)
+
         # iterate through guild IDs
         guild_ids = [guild.id for guild in self.bot.guilds]
         for guild_id in guild_ids:
             # fetch the notification config
             config = await self.config.get_data(guild_id, "notification")
+            # get the current time and offset it by an hour # TODO
+            cutoff = datetime.now(tz=pytz.utc) - timedelta(hours=config.get("max_notif_age", 1))
             # skip if the channel_id is not set
             channel_id = config["channel_id"]
             if channel_id is None:
@@ -248,7 +252,8 @@ class TreeNotifCog(commands.Cog):
                 if (
                     message.author == self.bot.user and
                     message.created_at < cutoff and
-                    message.id not in self.notifications[str(guild_id)].values()
+                    message.id not in self.notifications[str(guild_id)].values() and
+                    config["persistence"] != "never_delete"
                 ):
                     messages.append(message)
             # check if the bot has permission to bulk-delete
@@ -307,7 +312,7 @@ class TreeNotifCog(commands.Cog):
             # cache the message
             self.notifications[str(guild_id)][category] = message
         # delete it if it should be temporary
-        if config["temporary"]:
+        if config["persistence"] == "delete_immediately":
             await self.delete_notification(
                 config=config,
                 guild_id=guild_id,
@@ -322,8 +327,10 @@ class TreeNotifCog(commands.Cog):
             # check if the message exists
             message = self.notifications[str(guild_id)][category]
             if message is not None:
-                # delete the message and remove it from cache
-                await util_delete_message(message=message)
+                # check if the message should be deleted
+                if config["persistence"] in ("delete_immediately", "delete_after_event"):
+                    # delete the message
+                    await util_delete_message(message=message)
 
     async def log_button_notification(self, guild_id: int, category: str) -> None:
         """

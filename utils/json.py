@@ -153,7 +153,8 @@ class BotConfigFile:
                             "insect": False, # bool, whether to notify for an insect
                             "fruit": False, # bool, whether to notify for an insect
                             "water": False, # bool, whether to notify for an insect
-                            "temporary": True, # bool, whether to delete the message immediately after sending it
+                            "persistence": "delete_after_event", # when the messsage should be deleted, ["delete_immediately", "delete_after_event", "delete_after_expiry", "never_delete"]
+                            "max_notif_age": 1, # integer, how old a notification can be before it is deleted
                             "message": "`ping` `Catch the insect!``Collect the fruit!``Water the tree!`",
                             "insect_role_id": "",
                             "fruit_role_id": "",
