@@ -207,7 +207,7 @@ class ConfigCog(commands.Cog):
         content = re.sub(r"(?i) ?`newline` ?", "\n", content)
         # figure out which part of the message to use
         index = 0
-        match category:
+        match str(category):
             case "insect":
                 index = 0
             case "fruit":
