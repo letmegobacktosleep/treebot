@@ -295,9 +295,12 @@ class TreeNotifCog(commands.Cog):
             # only try to send the message if enabled
             message = None
             if config[category]:
+                # fetch the role ID
+                role_id = config.get(f"{category}_role_id", None)
+                role_str = f"<@&{role_id}>" if role_id else ""
                 # fetch the message content and substitute pings and newlines
                 content = config["message"]
-                content = re.sub(r"(?i)`ping`", f"<@&{config[f'{category}_role_id']}>", content)
+                content = re.sub(r"(?i)`ping`", role_str, content)
                 content = re.sub(r"(?i) ?`newline` ?", "\n", content)
                 # figure out which part of the message to use
                 index = self.index_map.get(category, 2)
