@@ -1,5 +1,6 @@
 # import built-in packages
 import json
+from typing import Any
 # import 3rd party packages
 import discord
 # import utils
@@ -26,7 +27,7 @@ async def util_modify_config(
     interaction: discord.Interaction,
     config_class: BotConfigFile,
     category: str,
-    config_values: list[tuple]
+    config_values: list[tuple[str, Any]]
 ) -> None:
     """
     modifies a configuration using key:value pairs
@@ -42,7 +43,10 @@ async def util_modify_config(
     # set the values
     for key, value in config_values:
         if value is not None:
-            config[key] = value
+            if key.endswith("_role_id") and value == guild_id:
+                config[key] = ""
+            else:
+                config[key] = value
             has_changed = True
     # save the new values
     content = ""
