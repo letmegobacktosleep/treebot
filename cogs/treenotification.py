@@ -40,9 +40,10 @@ class TreeNotifCog(commands.Cog):
         self.notifications: dict[str, dict[str, Any]] = {}
 
         self.index_map = {
-            "insect": 0,
-            "fruit":  1,
-            "water":  2
+            "insect":      0,
+            "fruit":       1,
+            "water":       2,
+            "early_water": 2, # same as water
         }
 
     @commands.Cog.listener()
@@ -98,14 +99,9 @@ class TreeNotifCog(commands.Cog):
         Assuming no messages have been sent yet, set the notification message ID to None
         """
         for guild_id in guild_ids:
-            self.notifications.setdefault(
-                str(guild_id),
-                {
-                    "insect": None,
-                    "fruit": None,
-                    "water": None
-                }
-            )
+            self.notifications.setdefault(str(guild_id), {})
+            for category in self.index_map:
+                self.notifications[str(guild_id)].setdefault(category, None)
 
     async def check_tree(self, message: discord.Message):
         """
@@ -185,17 +181,21 @@ class TreeNotifCog(commands.Cog):
             if config["channel_id"] is None:
                 continue
             # check if should send a watering notification
-            await self.process_notification(
-                config=config,
+            delay = config.get("water_notif_delay", 0)
+            water, delayed = await self.tree_needs_watering(
                 guild_id=guild_id,
-                category="water",
-                state=(
-                    await self.tree_needs_watering(
-                        guild_id=guild_id,
-                        delay=config.get("water_notif_delay", 0)
-                    )
-                )
+                delay=delay
             )
+            for category, state in (
+                ("early_water", water),
+                ("water", delayed),
+            ):
+                await self.process_notification(
+                    config=config,
+                    guild_id=guild_id,
+                    category=category,
+                    state=state
+                )
 
     async def process_notification(
         self,
@@ -219,7 +219,7 @@ class TreeNotifCog(commands.Cog):
                 guild_id=guild_id,
                 category=category
             )
-            if category != "water":
+            if category in ("insect", "fruit"):
                 await self.log_button_notification(
                     guild_id=guild_id,
                     category=category
@@ -294,7 +294,7 @@ class TreeNotifCog(commands.Cog):
                 return
             # only try to send the message if enabled
             message = None
-            if config[category]:
+            if config.get(category, True):
                 # fetch the role ID
                 role_id = config.get(f"{category}_role_id", None)
                 role_str = f"<@&{role_id}>" if role_id else ""
@@ -333,7 +333,7 @@ class TreeNotifCog(commands.Cog):
         """
         delete the cached notification
         """
-        if config[category]:
+        if config.get(category, True):
             # check if the message exists
             message = self.notifications[str(guild_id)][category]
             if message is not None:
@@ -369,9 +369,9 @@ class TreeNotifCog(commands.Cog):
         """
         Replaces a string such as `zero``one``two` with `zero` for index 0.
         """
-        match = str(match.group())
-        match = match.strip("`").split("``")
-        return match[index]
+        group = str(match.group())
+        group = group.strip("`").split("``")
+        return group[index]
 
     def tree_has_insect(self, buttons: set, guild_id: int) -> bool:
         """
@@ -399,13 +399,22 @@ class TreeNotifCog(commands.Cog):
             return True
         return False
 
-    async def tree_needs_watering(self, guild_id: int, delay: int = 0):
+    async def tree_needs_watering(self, guild_id: int, delay: int = 0) -> tuple[bool, bool]:
         """
         checks whether the current time exceeds the next watering time
         """
         next_water, _ = await self.next_water.fetch_guild(guild_id=guild_id)
-        cutoff = datetime.now(tz=pytz.utc) - timedelta(seconds=delay)
-        return cutoff > next_water
+        cutoff = datetime.now(tz=pytz.utc)
+        # create a "window of time" between the first and second notification
+        normal = cutoff > next_water
+        offset = cutoff - timedelta(seconds=delay) > next_water
+        # handle negative delays
+        if delay == 0:
+            return (False, offset)
+        elif delay > 0:
+            return (normal and not offset, offset)
+        else:
+            return (offset and not normal, normal)
 
 # setup this file as a cog?
 async def setup(bot):

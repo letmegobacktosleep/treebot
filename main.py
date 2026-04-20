@@ -83,7 +83,7 @@ class TreeBot(commands.Bot):
         await self.tree_logs.load_logs(guild_ids=[guild.id])
         await self.next_water.load_logs(guild_ids=[guild.id])
 
-    async def on_message(self, guild):
+    async def on_message(self, _message): # pylint: disable=arguments-differ
         # do nothing
         return
 

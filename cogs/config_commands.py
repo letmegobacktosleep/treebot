@@ -1,6 +1,5 @@
 # import built-in packages
 import logging
-from typing import Optional
 import re
 # import 3rd party packages
 import asyncio
@@ -36,10 +35,10 @@ class ConfigCog(commands.Cog):
     async def cmd_set_config_logs(
         self,
         interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        tree_name: Optional[str],
-        output_timezone: Optional[str],
-        outlier_duration: Optional[int]
+        channel: discord.TextChannel | None,
+        tree_name: str               | None,
+        output_timezone: str         | None,
+        outlier_duration: int        | None
     ) -> None:
         """
         config category: general
@@ -50,7 +49,7 @@ class ConfigCog(commands.Cog):
             config_class=self.config,
             category="general",
             config_values=[
-                ("channel_id",       channel_id),
+                ("channel_id",       channel.id if channel is not None else None),
                 ("tree_name",        tree_name),
                 ("timezone",         output_timezone),
                 ("outlier_duration", outlier_duration)
@@ -64,10 +63,10 @@ class ConfigCog(commands.Cog):
     async def cmd_set_config_status(
         self,
         interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        total_hours: Optional[int],
-        valid_days: Optional[str],
-        valid_hours: Optional[str]
+        channel: discord.TextChannel | None,
+        total_hours: int             | None,
+        valid_days: str              | None,
+        valid_hours: str             | None
     ) -> None:
         """
         config category: status_message
@@ -92,7 +91,7 @@ class ConfigCog(commands.Cog):
             config_class=self.config,
             category="status_message",
             config_values=[
-                ("channel_id",  channel_id),
+                ("channel_id",  channel.id if channel is not None else None),
                 ("total_hours", total_hours),
                 ("valid_days",  valid_days_int),
                 ("valid_hours", valid_hours_int),
@@ -107,12 +106,12 @@ class ConfigCog(commands.Cog):
     async def cmd_set_config_goal(
         self,
         interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        goal: Optional[int],
-        greater_than: Optional[bool],
-        pattern: Optional[str],
-        message: Optional[str],
-        reached: Optional[bool]
+        channel: discord.TextChannel | None,
+        goal: int                    | None,
+        greater_than: bool           | None,
+        pattern: str                 | None,
+        message: str                 | None,
+        reached: bool                | None
     ) -> None:
         """
         config category: tree_goal
@@ -125,7 +124,7 @@ class ConfigCog(commands.Cog):
             config_class=self.config,
             category="tree_goal",
             config_values=[
-                ("channel_id",   channel_id),
+                ("channel_id",   channel.id if channel is not None else None),
                 ("goal",         goal),
                 ("greater_than", greater_than),
                 ("pattern",      pattern),
@@ -147,17 +146,19 @@ class ConfigCog(commands.Cog):
     async def cmd_set_config_notifications(
         self,
         interaction: discord.Interaction,
-        channel_id: Optional[str], # too large for an int?
-        persistence: Optional[app_commands.Choice[str]],
-        max_notif_age: Optional[int],
-        water_notif_delay: Optional[int],
-        insect: Optional[bool],
-        fruit: Optional[bool],
-        water: Optional[bool],
-        message: Optional[str],
-        insect_role_id: Optional[str],
-        fruit_role_id: Optional[str],
-        water_role_id: Optional[str]
+        channel: discord.TextChannel          | None,
+        persistence: app_commands.Choice[str] | None,
+        max_notif_age: int                    | None,
+        water_notif_delay: int                | None,
+        insect: bool                          | None,
+        fruit: bool                           | None,
+        water: bool                           | None,
+        early_water: bool                     | None,
+        message: str                          | None,
+        insect_role: discord.Role             | None,
+        fruit_role: discord.Role              | None,
+        water_role: discord.Role              | None,
+        early_water_role: discord.Role        | None,
     ):
         """
         config category: notification
@@ -173,17 +174,19 @@ class ConfigCog(commands.Cog):
             config_class=self.config,
             category="notification",
             config_values=[
-                ("channel_id",        channel_id),
-                ("persistence",       persistence_str),
-                ("max_notif_age",     max_notif_age),
-                ("water_notif_delay", water_notif_delay),
-                ("insect",            insect),
-                ("fruit",             fruit),
-                ("water",             water),
-                ("message",           message),
-                ("insect_role_id",    int(insect_role_id) if insect_role_id is not None else None),
-                ("fruit_role_id",     int(fruit_role_id)  if fruit_role_id  is not None else None),
-                ("water_role_id",     int(water_role_id)  if water_role_id  is not None else None)
+                ("channel_id",          channel.id if channel is not None else None),
+                ("persistence",         persistence_str),
+                ("max_notif_age",       max_notif_age),
+                ("water_notif_delay",   water_notif_delay),
+                ("insect",              insect),
+                ("fruit",               fruit),
+                ("water",               water),
+                ("early_water",         early_water),
+                ("message",             message),
+                ("insect_role_id",      insect_role.id      if insect_role is not None else None),
+                ("fruit_role_id",       fruit_role.id       if fruit_role is not None else None),
+                ("water_role_id",       water_role.id       if water_role is not None else None),
+                ("early_water_role_id", early_water_role.id if early_water_role is not None else None)
             ]
         )
 

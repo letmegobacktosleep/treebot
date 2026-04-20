@@ -1,7 +1,6 @@
 # import built-in packages
 import logging
 from datetime import datetime
-from typing import Optional
 from dataclasses import dataclass, field
 # import 3rd party packages
 import pytz

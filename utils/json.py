@@ -151,15 +151,17 @@ class BotConfigFile:
                         "notification": {
                             "channel_id": None, # integer, ignore if None
                             "insect": False, # bool, whether to notify for an insect
-                            "fruit": False, # bool, whether to notify for an insect
-                            "water": False, # bool, whether to notify for an insect
-                            "water_notif_delay": 0, # integer, how many seconds of delay before a watering message is sent
-                            "persistence": "delete_after_event", # when the messsage should be deleted, ["delete_immediately", "delete_after_event", "delete_after_expiry", "never_delete"]
+                            "fruit": False, # bool, whether to notify for an fruit
+                            "water": False, # bool, whether to notify for an water
+                            "early_water": False, # bool, whether to notify for early water
                             "max_notif_age": 1, # integer, how old a notification can be before it is deleted
+                            "persistence": "delete_after_event", # when the messsage should be deleted, ["delete_immediately", "delete_after_event", "delete_after_expiry", "never_delete"]
                             "message": "`ping` `Catch the insect!``Collect the fruit!``Water the tree!`",
                             "insect_role_id": "",
                             "fruit_role_id": "",
-                            "water_role_id": ""
+                            "water_role_id": "",
+                            "early_water_role_id": "",
+                            "water_notif_delay": 5, # integer, how many seconds of delay before a watering message is sent
                         }
                     }
                 )
