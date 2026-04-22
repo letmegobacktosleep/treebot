@@ -399,22 +399,27 @@ class TreeNotifCog(commands.Cog):
             return True
         return False
 
-    async def tree_needs_watering(self, guild_id: int, delay: int = 0) -> tuple[bool, bool]:
+    async def tree_needs_watering(
+        self,
+        guild_id: int,
+        offset:   int = 1,
+        delay:    int = 0
+    ) -> tuple[bool, bool]:
         """
         checks whether the current time exceeds the next watering time
         """
         next_water, _ = await self.next_water.fetch_guild(guild_id=guild_id)
-        cutoff = datetime.now(tz=pytz.utc)
+        now = datetime.now(tz=pytz.utc)
         # create a "window of time" between the first and second notification
-        normal = cutoff > next_water
-        offset = cutoff - timedelta(seconds=delay) > next_water
+        normal = now + timedelta(seconds=offset) > next_water
+        delayed = now - timedelta(seconds=delay) > next_water
         # handle negative delays
         if delay == 0:
-            return (False, offset)
+            return (False, delayed)
         elif delay > 0:
-            return (normal and not offset, offset)
+            return (normal and not delayed, delayed)
         else:
-            return (offset and not normal, normal)
+            return (delayed and not normal, normal)
 
 # setup this file as a cog?
 async def setup(bot):
